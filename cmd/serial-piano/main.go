@@ -80,9 +80,9 @@ func main() {
 		code := int(buf[1])
 
 		noteOn := (status >> 7) == 0
-		if state[code] && noteOn {
+		/*if state[code] && noteOn {
 			continue
-		}
+		}*/
 		state[code] = noteOn
 
 		note, ok := keymap[code]

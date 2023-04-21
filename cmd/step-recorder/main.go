@@ -77,6 +77,15 @@ func main() {
 
 	var last_time time.Time
 	recording := false
+	stepIndex := 0
+
+	stopRecording := func() {
+		println("stopped recording")
+		recording = false
+		if len(temp_record) > 0 {
+			temp_record[0].Time = 0
+		}
+	}
 
 	stop, err := midi.ListenTo(in, func(msg midi.Message, timestampms int32) {
 		var bt []byte
@@ -104,14 +113,7 @@ func main() {
 			if param == 64 { //sustain
 				he(send(msg))
 			}
-			if param == 2 && !recording {
-				println("recording...")
-				go Ping(95, send)
-				recording = true
-				last_time = time.Now()
-				return
-			}
-			if param == 8 && !recording {
+			if (param == 8 || param == 2) && !recording {
 				println("recording...")
 				go Ping(95, send)
 				recording = true
@@ -120,12 +122,8 @@ func main() {
 				return
 			}
 			if (param == 8 || param == 2) && recording {
-				println("stopped recording")
 				go Ping(100, send)
-				recording = false
-				if len(temp_record) > 0 {
-					temp_record[0].Time = 0
-				}
+				stopRecording()
 				return
 			}
 			if param == 3 {
@@ -143,6 +141,7 @@ func main() {
 				println("reset")
 				go Ping(92, send)
 				temp_record = temp_record[:0]
+				stopRecording()
 				//reset
 			}
 			if param == 9 {
@@ -154,6 +153,30 @@ func main() {
 				println("saving..")
 				Save(&main_record)
 				println("done")
+			}
+
+			if param == 10 {
+				println("step reset")
+				stepIndex = 0
+				go Ping(64, send)
+			}
+			if param == 11 {
+				if len(main_record) == 0 {
+					return
+				}
+				for stepIndex < len(main_record) {
+					rmsg := main_record[stepIndex].Msg
+					if rmsg.Is(midi.NoteOffMsg) {
+						send(rmsg)
+						stepIndex += 1
+					} else {
+						break
+					}
+				}
+				if stepIndex < len(main_record) {
+					send(main_record[stepIndex].Msg)
+					stepIndex += 1
+				}
 			}
 
 		default:
