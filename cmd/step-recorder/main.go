@@ -9,6 +9,8 @@ import (
 	"time"
 
 	"gitlab.com/gomidi/midi/v2"
+	"gitlab.com/gomidi/midi/v2/drivers"
+	"gitlab.com/gomidi/midi/v2/drivers/rtmididrv"
 	_ "gitlab.com/gomidi/midi/v2/drivers/rtmididrv" // autoregisters driver
 	"gitlab.com/gomidi/midi/v2/smf"
 )
@@ -53,15 +55,17 @@ func main() {
 	defer midi.CloseDriver()
 	in, err := midi.FindInPort(*inPort)
 	if err != nil {
-		fmt.Println("can't find input")
-		return
+		fmt.Println("can't find input, opening one")
+		in, err = drivers.Get().(*rtmididrv.Driver).OpenVirtualIn("step-recorder")
+		he(err)
 	}
 	println("input:", in.String())
 
 	out, err := midi.FindOutPort(*outPort)
 	if err != nil {
 		fmt.Println("can't find output")
-		return
+		out, err = drivers.Get().(*rtmididrv.Driver).OpenVirtualOut("step-recorder")
+		he(err)
 	}
 	println("output:", out.String())
 	send, err := midi.SendTo(out)
@@ -93,7 +97,7 @@ func main() {
 			//fmt.Printf("ending note %s on channel %v\n", midi.Note(key), ch)
 			he(send(msg))
 		case msg.GetControlChange(&ch, &key, &vel):
-			fmt.Printf("control change: %v=%v on chan %v\n", key, vel, ch)
+			//fmt.Printf("control change: %v=%v on chan %v\n", key, vel, ch)
 			param := key
 			//value := vel
 			if param == 64 { //sustain
@@ -118,7 +122,9 @@ func main() {
 				println("stopped recording")
 				go Ping(100, send)
 				recording = false
-				temp_record[0].Time = 0
+				if len(temp_record) > 0 {
+					temp_record[0].Time = 0
+				}
 				return
 			}
 			if param == 3 {
