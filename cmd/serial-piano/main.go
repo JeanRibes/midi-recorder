@@ -19,7 +19,7 @@ func main() {
 
 	portName := flag.String("port", "/dev/ttyACM0", "serial port, e.g. /dev/ttyUSB0")
 	keymapFile := flag.String("keymap", "keymap.txt", "path of keymap file (format: one 'keycode:note' per line")
-	outPort := flag.String("output", "", "MIDI output port name")
+	outPort := flag.String("output", "step-recorder", "MIDI output port name")
 	debug := flag.Bool("debug", false, "print notes")
 	//"Synth input port (qsynth:0)"
 
@@ -50,13 +50,6 @@ func main() {
 		log.Fatal(err)
 	}
 
-	/*if *outPort == "" {
-		np, err := rtmidi.NewMIDIIn(rtmidi.APILinuxALSA, "testout", 1)
-		he(err)
-		np.OpenPort(0, "dummy-port")
-		he(err)
-		*outPort = "dummy-port"
-	}*/
 	println(midi.GetOutPorts().String())
 
 	//out, err := midi.OutPort(1)
@@ -65,7 +58,6 @@ func main() {
 		fmt.Println("can't find output", *outPort, "opening a new one")
 		//		out, err = midi.OutPort(0)
 		out, err = drivers.Get().(*rtmididrv.Driver).OpenVirtualOut("serial-piano")
-
 		he(err)
 	}
 

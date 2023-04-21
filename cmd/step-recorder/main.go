@@ -44,8 +44,8 @@ func Ping(note uint8, send func(msg midi.Message) error) {
 }
 
 func main() {
-	inPort := flag.String("input", "AcerPS2", "MIDI input port name")
-	outPort := flag.String("output", "Synth input port (qsynth:0)", "MIDI output port name")
+	inPort := flag.String("input", "serial-piano", "MIDI input port name")
+	outPort := flag.String("output", "", "MIDI output port name")
 	flag.BoolVar(&askName, "ask-name", true, "if false, do not ask for a filename on save")
 	flag.BoolVar(&doPing, "ping", true, "play 'ping' notes on record/stop/save/append/reset... to confirm user input")
 	flag.IntVar(&BPM, "bpm", 120, "MIDI file BPM")
@@ -53,10 +53,11 @@ func main() {
 	flag.Parse()
 
 	defer midi.CloseDriver()
+	drv := drivers.Get().(*rtmididrv.Driver)
 	in, err := midi.FindInPort(*inPort)
 	if err != nil {
 		fmt.Println("can't find input, opening one")
-		in, err = drivers.Get().(*rtmididrv.Driver).OpenVirtualIn("step-recorder")
+		in, err = drv.OpenVirtualIn("step-recorder")
 		he(err)
 	}
 	println("input:", in.String())
@@ -64,7 +65,7 @@ func main() {
 	out, err := midi.FindOutPort(*outPort)
 	if err != nil {
 		fmt.Println("can't find output")
-		out, err = drivers.Get().(*rtmididrv.Driver).OpenVirtualOut("step-recorder")
+		out, err = drv.OpenVirtualOut("step-recorder")
 		he(err)
 	}
 	println("output:", out.String())
