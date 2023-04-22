@@ -20,8 +20,9 @@ func main() {
 	portName := flag.String("port", "/dev/ttyACM0", "serial port, e.g. /dev/ttyUSB0")
 	keymapFile := flag.String("keymap", "keymap.txt", "path of keymap file (format: one 'keycode:note' per line")
 	outPort := flag.String("output", "step-recorder", "MIDI output port name")
-	debug := flag.Bool("debug", false, "print notes")
 	//"Synth input port (qsynth:0)"
+	debug := flag.Bool("debug", false, "print notes")
+	//us := flag.Int("skip", 500, "minimal delay between events")
 
 	flag.Parse()
 
@@ -49,6 +50,8 @@ func main() {
 	if err != nil {
 		log.Fatal(err)
 	}
+	port.ResetInputBuffer()
+	port.SetReadTimeout(serial.NoTimeout)
 
 	println(midi.GetOutPorts().String())
 
@@ -69,21 +72,37 @@ func main() {
 	controller_state := [256]bool{}
 	//last_code := 0
 
-	port.ResetInputBuffer()
 	buf := make([]byte, 2)
+	//var last_event time.Time
 	for {
-		_, err := port.Read(buf)
+
+		n, err := port.Read(buf)
 		if err != nil {
-			println(err)
+			println(err.Error())
+			continue
 		}
+		if n != 2 {
+			println(n)
+			port.ResetInputBuffer()
+			continue
+		}
+
 		status := int(buf[0])
 		code := int(buf[1])
 
 		noteOn := (status >> 7) == 0
-		/*if state[code] && noteOn {
+		if state[code] == noteOn {
+			println("skip double presses")
 			continue
-		}*/
+		}
 		state[code] = noteOn
+
+		/*if noteOn && time.Since(last_event) < time.Microsecond*US {
+			println("skip")
+			continue
+		}
+		last_event = time.Now()
+		*/
 
 		note, ok := keymap[code]
 		if note < 0 && noteOn && ok {

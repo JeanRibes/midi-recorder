@@ -95,7 +95,7 @@ func main() {
 		bpm := float64(int(BPM) * 10000)
 		for _, ev := range track {
 			if ev.Message.GetMetaTempo(&bpm) {
-				bpm *= float64(10000)
+				bpm *= float64(10840)
 				println("multiplier:", bpm)
 				continue
 			}
@@ -121,6 +121,9 @@ func main() {
 				println(ev.Message.String())
 			}
 		}
+		if len(main_record) > 0 {
+			main_record[0].Time = 0
+		}
 		println("main:", len(main_record))
 	}
 
@@ -142,7 +145,7 @@ func main() {
 		switch {
 		case msg.GetSysEx(&bt):
 			fmt.Printf("got sysex: % X\n", bt)
-		case msg.GetNoteStart(&ch, &key, &vel):
+		case msg.GetNoteOn(&ch, &key, &vel) || msg.GetNoteEnd(&ch, &key):
 			//fmt.Printf("starting note %s on channel %v with velocity %v\n", midi.Note(key), ch, vel)
 			he(send(msg))
 			if recording {
@@ -152,9 +155,6 @@ func main() {
 				})
 				last_time = time.Now()
 			}
-		case msg.GetNoteEnd(&ch, &key):
-			//fmt.Printf("ending note %s on channel %v\n", midi.Note(key), ch)
-			he(send(msg))
 		case msg.GetControlChange(&ch, &key, &vel):
 			//fmt.Printf("control change: %v=%v on chan %v\n", key, vel, ch)
 			param := key
@@ -213,6 +213,9 @@ func main() {
 				if len(main_record) == 0 {
 					return
 				}
+				if stepIndex < 0 {
+					stepIndex = 0
+				}
 				for stepIndex < len(main_record) {
 					rmsg := main_record[stepIndex].Msg
 					if rmsg.Is(midi.NoteOffMsg) {
@@ -222,12 +225,18 @@ func main() {
 						break
 					}
 				}
-				if stepIndex < len(main_record) {
+				if stepIndex < len(main_record) && stepIndex >= 0 {
 					send(main_record[stepIndex].Msg)
 					stepIndex += 1
 				}
 			}
 			if param == 12 {
+				if len(main_record) == 0 {
+					return
+				}
+				if stepIndex >= len(main_record) {
+					stepIndex = len(main_record) - 1
+				}
 				if stepIndex > 0 && len(main_record) > 0 && stepIndex < len(main_record) {
 					rmsg := main_record[stepIndex].Msg
 					send(rmsg)
@@ -239,6 +248,7 @@ func main() {
 					}
 				}
 			}
+			//(stepIndex)
 
 		default:
 			// ignore
