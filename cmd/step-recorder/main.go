@@ -31,14 +31,15 @@ func (r Recording) Play(send func(msg midi.Message) error) {
 	for _, note := range r {
 		time.Sleep(note.Time)
 		send(note.Msg)
-
-		var ch, key, vel uint8
-		if note.Msg.GetNoteOn(&ch, &key, &vel) {
-			println(ch, key, vel, note.Time, "on")
-		}
-		if note.Msg.GetNoteOff(&ch, &key, &vel) {
-			println(ch, key, vel, note.Time, "off")
-		}
+		/*
+			var ch, key, vel uint8
+			if note.Msg.GetNoteOn(&ch, &key, &vel) {
+				println(ch, key, vel, note.Time, "on")
+			}
+			if note.Msg.GetNoteOff(&ch, &key, &vel) {
+				println(ch, key, vel, note.Time, "off")
+			}
+		*/
 	}
 	println("finished")
 }
@@ -103,18 +104,6 @@ func main() {
 					Msg:  ev.Message.Bytes(),
 					Time: clock.Duration(bpm, ev.Delta),
 				})
-				/*var ch, key, vel uint8
-				var note midi.Message
-				 ev.Message.GetNoteOn(&ch, &key, &vel) {
-					note = midi.NoteOn(ch, key, vel)
-				}
-				if ev.Message.GetNoteOff(&ch, &key, &vel) {
-					note = midi.NoteOff(ch, key)
-				}
-				main_record = append(main_record, RecordedNote{
-					Msg:  note,
-					Time: time.Duration(ev.Delta) * time.Duration(BPM),
-				})*/
 
 			} else {
 				println(ev.Message.String())

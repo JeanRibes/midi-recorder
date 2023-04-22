@@ -3,13 +3,12 @@ package main
 import (
 	"flag"
 	"fmt"
-	"log"
 
+	"github.com/albenik/go-serial/v2"
 	"gitlab.com/gomidi/midi/v2"
 	"gitlab.com/gomidi/midi/v2/drivers"
 	"gitlab.com/gomidi/midi/v2/drivers/rtmididrv"
 	_ "gitlab.com/gomidi/midi/v2/drivers/rtmididrv" // autoregisters driver
-	"go.bug.st/serial"
 )
 
 func main() {
@@ -28,30 +27,16 @@ func main() {
 
 	keymap := LoadKeymap(*keymapFile)
 
-	ports, err := serial.GetPortsList()
-	if err != nil {
-		log.Fatal(err)
-	}
-	if len(ports) == 0 {
-		log.Fatal("No serial ports found!")
-	}
-	for _, port := range ports {
-		fmt.Printf("Found port: %v\n", port)
-	}
-
-	if *portName == "" {
-		portName = &ports[0]
-	}
-
-	mode := &serial.Mode{
-		BaudRate: 115200,
-	}
-	port, err := serial.Open(*portName, mode)
-	if err != nil {
-		log.Fatal(err)
-	}
-	port.ResetInputBuffer()
-	port.SetReadTimeout(serial.NoTimeout)
+	port, err := serial.Open(*portName,
+		serial.WithBaudrate(115200),
+		serial.WithDataBits(8),
+		serial.WithParity(serial.NoParity),
+		serial.WithStopBits(serial.OneStopBit),
+		serial.WithReadTimeout(1000),
+		serial.WithWriteTimeout(1000),
+		serial.WithHUPCL(false),
+	)
+	he(err)
 
 	println(midi.GetOutPorts().String())
 
@@ -68,6 +53,11 @@ func main() {
 	send, err := midi.SendTo(out)
 	he(err)
 
+	{
+		buf := make([]byte, 20)
+		port.Read(buf)
+	}
+
 	state := [256]bool{}
 	controller_state := [256]bool{}
 	//last_code := 0
@@ -81,9 +71,12 @@ func main() {
 			println(err.Error())
 			continue
 		}
+		if n == 0 {
+			continue
+		}
 		if n != 2 {
 			println(n)
-			port.ResetInputBuffer()
+			//port.Flush()
 			continue
 		}
 

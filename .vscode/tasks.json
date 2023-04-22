@@ -1,0 +1,14 @@
+{
+    "version": "2.0.0",
+    "tasks": [
+        {
+            "label": "Build and run",
+            "type": "shell",
+            "command": "cd cmd/serial-piano; go build; cd ../step-recorder; go build",
+            "group": {
+                "kind": "build",
+                "isDefault": true
+            }
+        }
+    ]
+}
