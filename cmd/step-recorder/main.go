@@ -92,17 +92,16 @@ func main() {
 		println("track 0 len:", len(track))
 		main_record = main_record[:0]
 		//main_record = main_record[:0]
-		bpm := float64(int(BPM) * 10000)
+		bpm := float64(BPM)
+		clock := mid.TimeFormat.(smf.MetricTicks)
 		for _, ev := range track {
 			if ev.Message.GetMetaTempo(&bpm) {
-				bpm *= float64(10840)
-				println("multiplier:", bpm)
 				continue
 			}
 			if ev.Message.IsOneOf(midi.NoteOffMsg, midi.NoteOnMsg) {
 				main_record = append(main_record, RecordedNote{
 					Msg:  ev.Message.Bytes(),
-					Time: time.Duration(ev.Delta) * time.Duration(bpm),
+					Time: clock.Duration(bpm, ev.Delta),
 				})
 				/*var ch, key, vel uint8
 				var note midi.Message
