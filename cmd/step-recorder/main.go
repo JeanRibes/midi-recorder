@@ -31,6 +31,14 @@ func (r Recording) Play(send func(msg midi.Message) error) {
 	for _, note := range r {
 		time.Sleep(note.Time)
 		send(note.Msg)
+
+		var ch, key, vel uint8
+		if note.Msg.GetNoteOn(&ch, &key, &vel) {
+			println(ch, key, vel, note.Time, "on")
+		}
+		if note.Msg.GetNoteOff(&ch, &key, &vel) {
+			println(ch, key, vel, note.Time, "off")
+		}
 	}
 	println("finished")
 }
@@ -49,6 +57,7 @@ func main() {
 	flag.BoolVar(&askName, "ask-name", true, "if false, do not ask for a filename on save")
 	flag.BoolVar(&doPing, "ping", true, "play 'ping' notes on record/stop/save/append/reset... to confirm user input")
 	flag.IntVar(&BPM, "bpm", 120, "MIDI file BPM")
+	fileName := flag.String("file", "", "load MIDI file")
 
 	flag.Parse()
 
@@ -74,6 +83,46 @@ func main() {
 
 	temp_record := Recording{}
 	main_record := Recording{}
+
+	if *fileName != "" {
+		mid, err := smf.ReadFile(*fileName)
+		he(err)
+		println(mid.NumTracks())
+		track := mid.Tracks[0]
+		println("track 0 len:", len(track))
+		main_record = main_record[:0]
+		//main_record = main_record[:0]
+		bpm := float64(int(BPM) * 10000)
+		for _, ev := range track {
+			if ev.Message.GetMetaTempo(&bpm) {
+				bpm *= float64(10000)
+				println("multiplier:", bpm)
+				continue
+			}
+			if ev.Message.IsOneOf(midi.NoteOffMsg, midi.NoteOnMsg) {
+				main_record = append(main_record, RecordedNote{
+					Msg:  ev.Message.Bytes(),
+					Time: time.Duration(ev.Delta) * time.Duration(bpm),
+				})
+				/*var ch, key, vel uint8
+				var note midi.Message
+				 ev.Message.GetNoteOn(&ch, &key, &vel) {
+					note = midi.NoteOn(ch, key, vel)
+				}
+				if ev.Message.GetNoteOff(&ch, &key, &vel) {
+					note = midi.NoteOff(ch, key)
+				}
+				main_record = append(main_record, RecordedNote{
+					Msg:  note,
+					Time: time.Duration(ev.Delta) * time.Duration(BPM),
+				})*/
+
+			} else {
+				println(ev.Message.String())
+			}
+		}
+		println("main:", len(main_record))
+	}
 
 	var last_time time.Time
 	recording := false
@@ -176,6 +225,18 @@ func main() {
 				if stepIndex < len(main_record) {
 					send(main_record[stepIndex].Msg)
 					stepIndex += 1
+				}
+			}
+			if param == 12 {
+				if stepIndex > 0 && len(main_record) > 0 && stepIndex < len(main_record) {
+					rmsg := main_record[stepIndex].Msg
+					send(rmsg)
+					stepIndex -= 1
+					for rmsg.Is(midi.NoteOffMsg) && stepIndex >= 0 {
+						rmsg = main_record[stepIndex].Msg
+						send(rmsg)
+						stepIndex -= 1
+					}
 				}
 			}
 
