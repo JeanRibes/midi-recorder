@@ -17,7 +17,7 @@ func main() {
 	//drivers.Get().(*rtmididrv.Driver).OpenVirtualIn("aa")
 
 	portName := flag.String("port", "/dev/ttyACM0", "serial port, e.g. /dev/ttyUSB0")
-	keymapFile := flag.String("keymap", "keymap.txt", "path of keymap file (format: one 'keycode:note' per line")
+	keymapFile := flag.String("keymap", "keymap.yaml", "path of keymap file (format: one 'keycode:note' per line")
 	outPort := flag.String("output", "step-recorder", "MIDI output port name")
 	//"Synth input port (qsynth:0)"
 	debug := flag.Bool("debug", false, "print notes")
@@ -25,7 +25,7 @@ func main() {
 
 	flag.Parse()
 
-	keymap := LoadKeymap(*keymapFile)
+	LoadKeymap(*keymapFile)
 
 	port, err := serial.Open(*portName,
 		serial.WithBaudrate(115200),
@@ -97,27 +97,45 @@ func main() {
 		last_event = time.Now()
 		*/
 
-		note, ok := keymap[code]
-		if note < 0 && noteOn && ok {
-			if *debug {
-				fmt.Printf("controller %d\n", -1*note)
-			}
+		mapped, ok := config.Keymap[code]
+		if mapped.Control && mapped.Hold && noteOn && ok {
+
 			if controller_state[code] {
-				send(midi.ControlChange(0, uint8(-1*note), 0))
+				send(midi.ControlChange(uint8(mapped.Channel), uint8(mapped.Param), 0))
+				if *debug {
+					fmt.Printf("controller %d -> %d\n", mapped.Param, 0)
+				}
 			} else {
-				send(midi.ControlChange(0, uint8(-1*note), 64))
+				send(midi.ControlChange(uint8(mapped.Channel), uint8(mapped.Param), uint8(mapped.Value)))
+				if *debug {
+					fmt.Printf("controller %d -> %d\n", mapped.Param, mapped.Value)
+				}
 			}
 			controller_state[code] = !controller_state[code]
 			continue
 		}
-		if note >= 0 && note <= 127 && ok {
+		if mapped.Control && !mapped.Hold && ok {
+
+			if noteOn {
+				send(midi.ControlChange(uint8(mapped.Channel), uint8(mapped.Param), uint8(mapped.Value)))
+				if *debug {
+					fmt.Printf("controller %d (no hold) -> %d\n", mapped.Param, mapped.Value)
+				}
+			} else {
+				send(midi.ControlChange(uint8(mapped.Channel), uint8(mapped.Param), 0))
+				if *debug {
+					fmt.Printf("controller %d (no hold) -> %d\n", mapped.Param, 0)
+				}
+			}
+		}
+		if !mapped.Control && mapped.Value <= 127 && ok {
 			if *debug {
-				fmt.Printf("note %d: %t\n", note, noteOn)
+				fmt.Printf("note %d: %t\n", mapped.Value, noteOn)
 			}
 			if noteOn {
-				send(midi.NoteOn(0, uint8(note), 64))
+				send(midi.NoteOn(0, uint8(mapped.Value), 64))
 			} else {
-				send(midi.NoteOff(0, uint8(note)))
+				send(midi.NoteOff(0, uint8(mapped.Value)))
 			}
 		}
 

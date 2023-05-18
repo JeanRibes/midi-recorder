@@ -1,35 +1,33 @@
 package main
 
 import (
-	"bufio"
+	"io/ioutil"
 	"log"
 	"os"
-	"strconv"
-	"strings"
+
+	"gopkg.in/yaml.v3"
 )
 
-func LoadKeymap(filename string) map[int]int {
+type Config struct {
+	Keymap map[int]struct {
+		Channel int
+		Value   int
+		Hold    bool
+
+		Control bool
+		Param   int
+	}
+}
+
+var config Config
+
+func LoadKeymap(filename string) {
+
 	file, err := os.Open(filename)
 	he(err)
-	r := bufio.NewReader(file)
-	keymap := map[int]int{}
-	for {
-		line, err := r.ReadString('\n')
-		if err != nil || line == "" {
-			println(err)
-			break
-		}
-		line = line[0 : len(line)-1]
-		s := strings.Split(line, ":")
-		if len(s) == 2 {
-			key, err := strconv.Atoi(s[0])
-			he(err)
-			val, err := strconv.Atoi(s[1])
-			he(err)
-			keymap[key] = val
-		}
-	}
-	return keymap
+	data, err := ioutil.ReadAll(file)
+	he(err)
+	yaml.Unmarshal(data, &config)
 }
 
 func he(err error) {
