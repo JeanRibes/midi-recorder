@@ -164,7 +164,8 @@ func main() {
 				return
 			}
 			if param == 3 {
-				go temp_record.Play(send)
+				//go temp_record.Play(send)
+				go temp_record.RemoveChords2().Play(send)
 			}
 			if param == 5 {
 				//append
