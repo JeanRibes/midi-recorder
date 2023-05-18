@@ -13,6 +13,13 @@ type NoteOnOff struct {
 	Wait     time.Duration // silence avant la note
 }
 
+func (ev NoteOnOff) Play(send func(midi.Message) error) {
+	fmt.Printf("play #%d\n", ev.Note)
+	send(midi.NoteOn(0, ev.Note, 64))
+	time.Sleep(ev.Duration)
+	send(midi.NoteOff(0, ev.Note))
+}
+
 type SingleRecording []NoteOnOff
 
 // Filter chords so that only one note is ever playing at a given time
@@ -73,7 +80,7 @@ func (r SingleRecording) Play(send func(msg midi.Message) error) {
 
 // Filter chords so that only one note is ever playing at a given time
 // if we detect that a note is already being played, it will be stopped
-func (r Recording) RemoveChords0() SingleRecording {
+func (r Recording) RemoveChords1() SingleRecording {
 	out := SingleRecording{}
 	previous_note := uint8(128)
 	abs_time := time.Unix(0, 0)
@@ -92,22 +99,26 @@ func (r Recording) RemoveChords0() SingleRecording {
 			on = false
 			fmt.Printf("off %d\n", key)
 		}
-		if on && previous_note < 128 { // note already playing, stop it
-			out = append(out, NoteOnOff{
-				Note:     previous_note,
-				Duration: abs_time.Sub(previous_time),
-			})
-			previous_note = 128
-			println("duplicate stomped")
-		} else {
-			previous_note = key
+		if on {
+			if previous_note < 128 { // note already playing, stop it
+				out = append(out, NoteOnOff{
+					Note:     previous_note,
+					Duration: abs_time.Sub(previous_time),
+				})
+				println("duplicate stomped")
+				println("add", previous_note)
+				previous_note = key
+			} else {
+				previous_note = key
+			}
 		}
-		if !on && previous_note == key {
+		if !on && previous_note < 128 {
 			out = append(out, NoteOnOff{
 				Note:     key,
 				Duration: abs_time.Sub(previous_time),
 			})
 			previous_note = 128
+			println("add", key)
 		}
 		previous_time = abs_time
 	}

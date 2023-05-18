@@ -1,12 +1,13 @@
 #!/usr/bin/env bash
 cd "$(dirname "$0")"
-./serial-piano -keymap keymap.txt -port /dev/ttyACM0 &
+./serial-piano -keymap keymap.yaml -port /dev/ttyACM0 &
 ppid=$!
 qsynth &
-sleep 1
-./step-recorder -input serial-piano -output 'Synth input port (qsynth:0)' &
-rpid=$!
 qpid=$!
+sleep 1
+#./step-recorder -input serial-piano -output 'Synth input port (qsynth:0)' & ; rpid=$!
+./step-recorder -input serial-piano -output 'Synth input port (qsynth:0)'
+
 function quit {
 	kill $ppid
 	kill $rpid
