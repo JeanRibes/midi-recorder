@@ -33,11 +33,11 @@ type Recording []RecordedNote
 func (r Recording) Play(send func(msg midi.Message) error) {
 	println("playing..")
 	for _, note := range r {
+		time.Sleep(note.Time)
 		if play_cancel {
 			play_cancel = false
 			return
 		}
-		time.Sleep(note.Time)
 		send(note.Msg)
 		/*
 			var ch, key, vel uint8
@@ -103,6 +103,8 @@ func main() {
 	bank_index := 1
 	banks := [NUM_BANKS + 1]Recording{}
 
+	var last_noteon midi.Message
+
 	if *fileName != "" {
 		mid, err := smf.ReadFile(*fileName)
 		he(err)
@@ -159,6 +161,9 @@ func main() {
 				})
 				last_time = time.Now()
 			}
+			if msg.IsOneOf(midi.NoteOnMsg) {
+				last_noteon = msg
+			}
 		case msg.GetControlChange(&ch, &key, &vel):
 			//fmt.Printf("control change: %v=%v on chan %v\n", key, vel, ch)
 			param := key
@@ -190,7 +195,9 @@ func main() {
 				go Ping(95, send)
 				recording = true
 				last_time = time.Now()
-				temp_record = temp_record[:0]
+				if param == 8 {
+					temp_record = temp_record[:0]
+				}
 				return
 			}
 			if (param == 8 || param == 2) && recording {
@@ -247,7 +254,7 @@ func main() {
 					stepIndex = 0
 				}
 
-				if stepIndex < len(step_record) && stepIndex >= 0 {
+				if stepIndex < len(step_record) {
 					ev := step_record[stepIndex]
 					var msg midi.Message
 					if value > 0 {
@@ -264,6 +271,10 @@ func main() {
 						})
 						step_last_time = time.Now()
 					}
+				} else {
+					if value > 0 {
+						go Ping(94, send)
+					}
 				}
 			}
 			if param == 12 {
@@ -273,13 +284,17 @@ func main() {
 				if stepIndex >= len(step_record) {
 					stepIndex = len(step_record) - 1
 				}
-				if stepIndex > 0 {
+				if stepIndex >= 0 {
 					ev := step_record[stepIndex]
 					if value > 0 {
 						send(midi.NoteOn(0, ev.Note, value)) // value = 64
 					} else {
 						send(midi.NoteOff(0, ev.Note))
 						stepIndex -= 1
+					}
+				} else {
+					if value > 0 {
+						go Ping(92, send)
 					}
 				}
 			}
@@ -297,6 +312,31 @@ func main() {
 			}
 			if param == 18 { //suppr
 				step_record = temp_record.RemoveChords2()
+			}
+			if param == 20 {
+				stepIndex -= 1
+				if stepIndex >= 0 && stepIndex < len(step_record) {
+					step_record = append(step_record[:stepIndex], step_record[stepIndex+1:]...)
+				}
+			}
+			if param == 21 { // add notes one by one
+				last_noteon.Is(midi.NoteOnMsg)
+				var note uint8
+				var _d uint8
+				if last_noteon.GetNoteOn(&_d, &note, &_d) {
+					step_record = append(step_record, NoteOnOff{
+						Note:     note,
+						Duration: time.Millisecond * 300,
+					})
+					temp_record = append(temp_record, RecordedNote{
+						Msg:  midi.NoteOn(0, note, 64),
+						Time: time.Millisecond * 200,
+					})
+					temp_record = append(temp_record, RecordedNote{
+						Msg:  midi.NoteOff(0, note),
+						Time: time.Millisecond * 300,
+					})
+				}
 			}
 
 		default:
