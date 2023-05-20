@@ -30,9 +30,9 @@ type RecordedNote struct {
 
 type Recording []RecordedNote
 
-func (r Recording) Play(send func(msg midi.Message) error) {
+func (r *Recording) Play(send func(msg midi.Message) error) {
 	println("playing..")
-	for _, note := range r {
+	for _, note := range *r {
 		time.Sleep(note.Time)
 		if play_cancel {
 			play_cancel = false
@@ -51,12 +51,20 @@ func (r Recording) Play(send func(msg midi.Message) error) {
 	}
 	println("finished")
 }
+func (r *Recording) Append(n ...RecordedNote) {
+	_r := *r
+	_r = append(_r, n...)
+	*r = _r
+}
+func (r *Recording) Reset() {
+	*r = Recording{}
+}
 
 func Ping(note uint8, send func(msg midi.Message) error) {
 	if doPing {
-		he(send(midi.NoteOn(0, note, 64)))
+		he(send(midi.NoteOn(config.Channels.Ping, note, 64)))
 		time.Sleep(100 * time.Millisecond)
-		he(send(midi.NoteOff(0, note)))
+		he(send(midi.NoteOff(config.Channels.Ping, note)))
 	}
 }
 
@@ -67,8 +75,11 @@ func main() {
 	flag.BoolVar(&doPing, "ping", true, "play 'ping' notes on record/stop/save/append/reset... to confirm user input")
 	flag.IntVar(&BPM, "bpm", 120, "MIDI file BPM")
 	fileName := flag.String("file", "", "load MIDI file")
+	configFile := flag.String("config", "config.yaml", "config file")
 
 	flag.Parse()
+
+	LoadConfig(*configFile)
 
 	defer midi.CloseDriver()
 	drv := drivers.Get().(*rtmididrv.Driver)
@@ -90,6 +101,8 @@ func main() {
 	send, err := midi.SendTo(out)
 	he(err)
 
+	Ping(60, send)
+
 	recording := false
 	var last_time time.Time
 	temp_record := Recording{}
@@ -101,38 +114,16 @@ func main() {
 	step_record := SingleRecording{}
 
 	bank_index := 1
-	banks := [NUM_BANKS + 1]Recording{}
+	_banks := []*Recording{}
+	for i := 0; i < 13; i++ {
+		_banks = append(_banks, &Recording{})
+	}
+	banks := &_banks
 
 	var last_noteon midi.Message
 
 	if *fileName != "" {
-		mid, err := smf.ReadFile(*fileName)
-		he(err)
-		println(mid.NumTracks())
-		track := mid.Tracks[0]
-		println("track 0 len:", len(track))
-		temp_record = temp_record[:0]
-		//temp_record = temp_record[:0]
-		bpm := float64(BPM)
-		clock := mid.TimeFormat.(smf.MetricTicks)
-		for _, ev := range track {
-			if ev.Message.GetMetaTempo(&bpm) {
-				continue
-			}
-			if ev.Message.IsOneOf(midi.NoteOffMsg, midi.NoteOnMsg) {
-				temp_record = append(temp_record, RecordedNote{
-					Msg:  ev.Message.Bytes(),
-					Time: clock.Duration(bpm, ev.Delta),
-				})
-
-			} else {
-				println(ev.Message.String())
-			}
-		}
-		if len(temp_record) > 0 {
-			temp_record[0].Time = 0
-		}
-		println("main:", len(temp_record))
+		LoadFile(*fileName, &temp_record)
 	}
 
 	stopRecording := func() {
@@ -144,6 +135,7 @@ func main() {
 		step_record = temp_record.RemoveChords2()
 		println("step", len(step_record))
 	}
+	go ui(banks)
 
 	stop, err := midi.ListenTo(in, func(msg midi.Message, timestampms int32) {
 		var bt []byte
@@ -153,6 +145,12 @@ func main() {
 			fmt.Printf("got sysex: % X\n", bt)
 		case msg.GetNoteOn(&ch, &key, &vel) || msg.GetNoteEnd(&ch, &key):
 			//fmt.Printf("starting note %s on channel %v with velocity %v\n", midi.Note(key), ch, vel)
+			if msg.Is(midi.NoteOnMsg) {
+				msg = midi.NoteOn(config.Channels.Output, key, vel)
+				last_noteon = msg
+			} else {
+				msg = midi.NoteOff(config.Channels.Output, key)
+			}
 			he(send(msg))
 			if recording {
 				temp_record = append(temp_record, RecordedNote{
@@ -161,14 +159,12 @@ func main() {
 				})
 				last_time = time.Now()
 			}
-			if msg.IsOneOf(midi.NoteOnMsg) {
-				last_noteon = msg
-			}
+			return
 		case msg.GetControlChange(&ch, &key, &vel):
 			//fmt.Printf("control change: %v=%v on chan %v\n", key, vel, ch)
 			param := key
 			value := vel
-			if param == 64 { //sustain
+			if param == uint8(config.Controllers["sustain_pedal"]) { //sustain
 				he(send(msg))
 			}
 			if param == 0 {
@@ -176,49 +172,49 @@ func main() {
 				go Ping(52, send)
 				return
 			}
-			if param == 19 {
+			if param == uint8(config.Controllers["record_taps"]) {
 				stepRecording = !stepRecording
 				if stepRecording {
 					step_last_time = time.Now()
 					//banks[bank_index].Reset()
 					go Ping(95, send)
 				} else {
-					if len(banks[bank_index]) > 0 {
-						banks[bank_index][0].Time = 0
+					if len(*(*banks)[bank_index]) > 0 {
+						(*(*banks)[bank_index])[0].Time = 0
 					}
 					go Ping(100, send)
 				}
 				return
 			}
-			if (param == 8 || param == 2) && !recording {
+			if (param == config.Controllers["restart_recording"] || param == config.Controllers["start_stop_recording"]) && !recording {
 				println("recording...")
 				go Ping(95, send)
 				recording = true
 				last_time = time.Now()
-				if param == 8 {
+				if param == config.Controllers["restart_recording"] {
 					temp_record = temp_record[:0]
 				}
 				return
 			}
-			if (param == 8 || param == 2) && recording {
+			if (param == config.Controllers["restart_recording"] || param == config.Controllers["start_stop_recording"]) && recording {
 				go Ping(100, send)
 				stopRecording()
 				return
 			}
-			if param == 3 {
+			if param == config.Controllers["play_temp"] {
 				go temp_record.Play(send)
 			}
-			if param == 5 {
+			if param == config.Controllers["append_temp_to_bank"] {
 				//append
 				go Ping(104, send)
 				//main_record = append(main_record, temp_record...)
-				banks[bank_index] = append(banks[bank_index], temp_record...)
+				(*banks)[bank_index].Append(temp_record...)
 			}
-			if param == 6 {
+			if param == config.Controllers["play_bank"] {
 				//go main_record.Play(send)
-				go banks[bank_index].Play(send)
+				go (*banks)[bank_index].Play(send)
 			}
-			if param == 4 {
+			if param == config.Controllers["del_temp"] {
 				println("reset")
 				go Ping(92, send)
 				//temp_record = temp_record[:0]
@@ -226,26 +222,26 @@ func main() {
 				stopRecording()
 				//reset
 			}
-			if param == 9 {
+			if param == config.Controllers["del_bank"] {
 				println("del")
 				go Ping(45, send)
 				//main_record = main_record[:0]
-				banks[bank_index] = banks[bank_index][:0]
+				(*banks)[bank_index].Reset()
 			}
-			if param == 7 {
+			if param == config.Controllers["save_bank"] {
 				println("saving..")
 				//Save(&main_record)
-				Save(&banks[bank_index])
+				Save((*banks)[bank_index], "")
 				println("done")
 			}
 
-			if param == 10 {
+			if param == config.Controllers["reset_step_index"] {
 				println("step reset")
 				stepIndex = 0
 				go Ping(64, send)
 			}
 
-			if param == 11 { // step playing
+			if param == config.Controllers["step_next"] { // step playing
 				println("step", stepIndex)
 				if len(step_record) == 0 {
 					return
@@ -258,14 +254,14 @@ func main() {
 					ev := step_record[stepIndex]
 					var msg midi.Message
 					if value > 0 {
-						msg = midi.NoteOn(0, ev.Note, value) // value = 64
+						msg = midi.NoteOn(config.Channels.Output, ev.Note, value) // value = 64
 					} else {
-						msg = midi.NoteOff(0, ev.Note)
+						msg = midi.NoteOff(config.Channels.Output, ev.Note)
 						stepIndex += 1
 					}
 					send(msg)
 					if stepRecording {
-						banks[bank_index] = append(banks[bank_index], RecordedNote{
+						(*banks)[bank_index].Append(RecordedNote{
 							Msg:  msg,
 							Time: time.Since(step_last_time),
 						})
@@ -277,7 +273,7 @@ func main() {
 					}
 				}
 			}
-			if param == 12 {
+			if param == config.Controllers["step_previous"] {
 				if len(step_record) == 0 {
 					return
 				}
@@ -287,9 +283,9 @@ func main() {
 				if stepIndex >= 0 {
 					ev := step_record[stepIndex]
 					if value > 0 {
-						send(midi.NoteOn(0, ev.Note, value)) // value = 64
+						send(midi.NoteOn(config.Channels.Output, ev.Note, value)) // value = 64
 					} else {
-						send(midi.NoteOff(0, ev.Note))
+						send(midi.NoteOff(config.Channels.Output, ev.Note))
 						stepIndex -= 1
 					}
 				} else {
@@ -298,28 +294,28 @@ func main() {
 					}
 				}
 			}
-			if param == 13 { // put bank back into temp
-				temp_record = append(temp_record, banks[bank_index]...)
+			if param == config.Controllers["load_bank_to_step"] { // put bank back into temp
+				temp_record = append(temp_record, *(*banks)[bank_index]...)
 				step_record = temp_record.RemoveChords1()
 				println("bank back into temp")
 				go Ping(104, send)
 			}
-			if param == 16 && value > 0 { // bank select: F1 -> F12
+			if param == config.Controllers["bank_select"] && value > 0 { // bank select: F1 -> F12
 				bank_index = int(value)
 			}
-			if param == 17 { //inser
+			if param == config.Controllers["filter_chords_jump"] { //inser
 				step_record = temp_record.RemoveChords1()
 			}
-			if param == 18 { //suppr
+			if param == config.Controllers["filter_chords_ignore"] { //suppr
 				step_record = temp_record.RemoveChords2()
 			}
-			if param == 20 {
+			if param == config.Controllers["delete_step"] {
 				stepIndex -= 1
 				if stepIndex >= 0 && stepIndex < len(step_record) {
 					step_record = append(step_record[:stepIndex], step_record[stepIndex+1:]...)
 				}
 			}
-			if param == 21 { // add notes one by one
+			if param == config.Controllers["incremental_add"] { // add notes one by one
 				last_noteon.Is(midi.NoteOnMsg)
 				var note uint8
 				var _d uint8
@@ -329,11 +325,11 @@ func main() {
 						Duration: time.Millisecond * 300,
 					})
 					temp_record = append(temp_record, RecordedNote{
-						Msg:  midi.NoteOn(0, note, 64),
+						Msg:  midi.NoteOn(config.Channels.Output, note, 64),
 						Time: time.Millisecond * 200,
 					})
 					temp_record = append(temp_record, RecordedNote{
-						Msg:  midi.NoteOff(0, note),
+						Msg:  midi.NoteOff(config.Channels.Output, note),
 						Time: time.Millisecond * 300,
 					})
 				}
@@ -353,7 +349,7 @@ func main() {
 	stop()
 }
 
-func Save(recording *Recording) {
+func Save(recording *Recording, name string) {
 	file := smf.New()
 	bpm := float64(BPM) // can be anything ?
 	main := smf.Track{}
@@ -368,7 +364,6 @@ func Save(recording *Recording) {
 	main.Close(0)
 	file.Add(main)
 
-	name := AskName()
 	if name == "" {
 		name = "recording-" + time.Now().Format("2006-01-02-15:04:05") + ".mid"
 	}
@@ -399,7 +394,34 @@ func he(err error) {
 	}
 }
 
-func (r *Recording) Reset() {
-	_r := *r
-	*r = _r[:0]
+func LoadFile(fileName string, recording *Recording) {
+	mid, err := smf.ReadFile(fileName)
+	he(err)
+	println(mid.NumTracks())
+	track := mid.Tracks[0]
+	println("track 0 len:", len(track))
+	recording.Reset()
+	_r := *recording
+	//temp_record = temp_record[:0]
+	bpm := float64(BPM)
+	clock := mid.TimeFormat.(smf.MetricTicks)
+	for _, ev := range track {
+		if ev.Message.GetMetaTempo(&bpm) {
+			continue
+		}
+		if ev.Message.IsOneOf(midi.NoteOffMsg, midi.NoteOnMsg) {
+			_r = append(_r, RecordedNote{
+				Msg:  ev.Message.Bytes(),
+				Time: clock.Duration(bpm, ev.Delta),
+			})
+
+		} else {
+			println(ev.Message.String())
+		}
+	}
+	if len(_r) > 0 {
+		_r[0].Time = 0
+	}
+	println("main:", len(_r))
+	*recording = _r
 }

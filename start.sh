@@ -1,10 +1,10 @@
 #!/usr/bin/env bash
 cd "$(dirname "$0")"
-./serial-piano -keymap keymap.yaml -port /dev/ttyACM0 &
+./serial-piano -keymap config.yaml -port /dev/ttyACM0 &
 ppid=$!
 qsynth &
 qpid=$!
-sleep 1
+sleep 2
 #./step-recorder -input serial-piano -output 'Synth input port (qsynth:0)' & ; rpid=$!
 ./step-recorder -input serial-piano -output 'Synth input port (qsynth:0)'
 
