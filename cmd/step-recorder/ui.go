@@ -1,0 +1,72 @@
+package main
+
+import (
+	"fmt"
+	"log"
+
+	"github.com/gotk3/gotk3/gtk"
+)
+
+func chooseCallbak(i int, win *gtk.Window, name string, action gtk.FileChooserAction, result func(string, int)) func(*gtk.Button) {
+	return func(v *gtk.Button) {
+		d, err := gtk.FileChooserDialogNewWith2Buttons(fmt.Sprintf("charge %d", i), win, action, name, gtk.RESPONSE_ACCEPT, "Annuler", gtk.RESPONSE_CANCEL)
+		he(err)
+		response := d.Run()
+		if response == gtk.RESPONSE_ACCEPT {
+			println(i, d.GetFilename())
+			result(d.GetFilename(), i)
+		}
+		d.Destroy()
+	}
+}
+
+func ui(banks *[]*Recording) {
+	gtk.Init(nil)
+
+	// Create a new toplevel window, set its title, and connect it to the
+	// "destroy" signal to exit the GTK main loop when it is destroyed.
+	win, err := gtk.WindowNew(gtk.WINDOW_TOPLEVEL)
+	if err != nil {
+		log.Fatal("Unable to create window:", err)
+	}
+	win.SetTitle("Step-Recorder")
+	win.Connect("destroy", func() {
+		gtk.MainQuit()
+	})
+
+	mv, _ := gtk.BoxNew(gtk.ORIENTATION_HORIZONTAL, 5)
+	for i, _ := range *banks {
+		hv, _ := gtk.BoxNew(gtk.ORIENTATION_VERTICAL, 10)
+		l, _ := gtk.LabelNew(fmt.Sprintf("bank %d", i))
+		hv.Add(l)
+		fcb, _ := gtk.ButtonNewWithLabel("charger")
+		fcb.Connect("clicked", chooseCallbak(i, win, "Charger", gtk.FILE_CHOOSER_ACTION_OPEN, func(s string, j int) {
+			fmt.Printf("load %s %d\n", s, j)
+			LoadFile(s, (*banks)[j])
+			println(len(*(*banks)[j]))
+		}))
+		hv.Add(fcb)
+
+		fsb, _ := gtk.ButtonNewWithLabel("enregistrer")
+		fsb.Connect("clicked", chooseCallbak(i, win, "Enregistrer", gtk.FILE_CHOOSER_ACTION_SAVE, func(s string, j int) {
+			fmt.Printf("save %s %d\n", s, j)
+			Save((*banks)[j], s)
+		}))
+		hv.Add(fsb)
+
+		mv.Add(hv)
+	}
+
+	win.Add(mv)
+
+	// Set the default window size.
+	win.SetDefaultSize(800, 600)
+
+	// Recursively show all widgets contained in this window.
+	win.ShowAll()
+
+	// Begin executing the GTK main loop.  This blocks until
+	// gtk.MainQuit() is run.
+	gtk.Main()
+
+}
