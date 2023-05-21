@@ -18,6 +18,7 @@ controllers:
   record_taps: &record_taps 19
   delete_step: &delete_step 20
   incremental_add: &incremental_add 21
+  multi_step: &multi_step 22
   sustain_pedal: &sustain_pedal 64
 
 channels:
@@ -184,7 +185,11 @@ keymap:
     control: true
     hold: true
     param: *incremental_add
-
+  29:
+    control: true
+    hold: false
+    param: *multi_step
+    value: 64
 # notes
   3:
     value: 147

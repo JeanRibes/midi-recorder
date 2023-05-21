@@ -3,7 +3,9 @@ package main
 import (
 	"fmt"
 	"log"
+	"time"
 
+	"github.com/gotk3/gotk3/glib"
 	"github.com/gotk3/gotk3/gtk"
 )
 
@@ -33,6 +35,7 @@ func ui(banks *[]*Recording) {
 	win.Connect("destroy", func() {
 		gtk.MainQuit()
 	})
+	banks_indicators := []*gtk.Label{}
 
 	mv, _ := gtk.BoxNew(gtk.ORIENTATION_HORIZONTAL, 5)
 	for i, _ := range *banks {
@@ -54,8 +57,24 @@ func ui(banks *[]*Recording) {
 		}))
 		hv.Add(fsb)
 
+		bi, _ := gtk.LabelNew("len: 0")
+		hv.Add(bi)
+		banks_indicators = append(banks_indicators, bi)
+
 		mv.Add(hv)
 	}
+
+	go func() {
+		for {
+			time.Sleep(2 * time.Second)
+			glib.IdleAdd(func() {
+				for i, bi := range banks_indicators {
+					bank := (*banks)[i]
+					bi.SetLabel(fmt.Sprintf("len: %d", len(*bank)/2))
+				}
+			})
+		}
+	}()
 
 	win.Add(mv)
 

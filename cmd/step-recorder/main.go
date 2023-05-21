@@ -19,7 +19,7 @@ var BPM int
 var doPing bool
 var askName bool
 
-const NUM_BANKS = 12
+const NUM_BANKS = 13
 
 var play_cancel = false
 
@@ -115,10 +115,13 @@ func main() {
 
 	bank_index := 1
 	_banks := []*Recording{}
-	for i := 0; i < 13; i++ {
+	for i := 0; i < NUM_BANKS; i++ {
 		_banks = append(_banks, &Recording{})
 	}
 	banks := &_banks
+
+	step_banks := [NUM_BANKS]SingleRecording{}
+	multiStep := 0
 
 	var last_noteon midi.Message
 
@@ -239,6 +242,7 @@ func main() {
 				println("step reset")
 				stepIndex = 0
 				go Ping(64, send)
+				multiStep = 0
 			}
 
 			if param == config.Controllers["step_next"] { // step playing
@@ -305,9 +309,17 @@ func main() {
 			}
 			if param == config.Controllers["filter_chords_jump"] { //inser
 				step_record = temp_record.RemoveChords1()
+				for i, bank := range *banks {
+					step_banks[i] = bank.RemoveChords1()
+				}
+				go Ping(99, send)
 			}
 			if param == config.Controllers["filter_chords_ignore"] { //suppr
 				step_record = temp_record.RemoveChords2()
+				for i, bank := range *banks {
+					step_banks[i] = bank.RemoveChords2()
+				}
+				go Ping(99, send)
 			}
 			if param == config.Controllers["delete_step"] {
 				stepIndex -= 1
@@ -332,6 +344,21 @@ func main() {
 						Msg:  midi.NoteOff(config.Channels.Output, note),
 						Time: time.Millisecond * 300,
 					})
+				}
+			}
+			if param == config.Controllers["multi_step"] {
+				for _, bank := range step_banks {
+					if multiStep < len(bank) {
+						ev := bank[multiStep]
+						if value > 0 {
+							send(midi.NoteOn(config.Channels.Output, ev.Note, value))
+						} else {
+							send(midi.NoteOff(config.Channels.Output, ev.Note))
+						}
+					}
+				}
+				if value > 0 {
+					multiStep += 1
 				}
 			}
 
