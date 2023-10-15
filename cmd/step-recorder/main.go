@@ -15,11 +15,12 @@ import (
 	"gitlab.com/gomidi/midi/v2/smf"
 )
 
+const NUM_BANKS = 13
+
 var BPM int
 var doPing bool
 var askName bool
-
-const NUM_BANKS = 13
+var armure_shift Armure = 0
 
 var play_cancel = false
 
@@ -169,6 +170,7 @@ func main() {
 			} else {
 				msg = midi.NoteOff(config.Channels.Output, key)
 			}
+			msg = Alter(msg, armure_shift)
 			he(send(msg))
 			if recording {
 				temp_record = append(temp_record, RecordedNote{
