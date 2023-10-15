@@ -60,6 +60,21 @@ func (r *Recording) Reset() {
 	*r = Recording{}
 }
 
+func (r *Recording) Transpose(delta int) {
+	for i, note := range *r {
+		var ch, key, vel uint8
+		if note.Msg.GetNoteOn(&ch, &key, &vel) {
+			println(i, "noteOn", key)
+			note.Msg = midi.NoteOn(ch, key+uint8(delta), vel)
+		}
+		if note.Msg.GetNoteOff(&ch, &key, &vel) {
+			println(i, "noteOff", key)
+			note.Msg = midi.NoteOff(ch, key+uint8(delta))
+		}
+		(*r)[i] = note
+	}
+}
+
 func Ping(note uint8, send func(msg midi.Message) error) {
 	if doPing {
 		he(send(midi.NoteOn(config.Channels.Ping, note, 64)))
@@ -351,15 +366,27 @@ func main() {
 					if multiStep < len(bank) {
 						ev := bank[multiStep]
 						if value > 0 {
-							send(midi.NoteOn(config.Channels.Output, ev.Note, value))
+							send(midi.NoteOn(uint8(config.Channels.Output), ev.Note, 64))
 						} else {
-							send(midi.NoteOff(config.Channels.Output, ev.Note))
+							if multiStep > 0 {
+								send(midi.NoteOff(uint8(config.Channels.Output), bank[multiStep-1].Note))
+							}
 						}
+					}
+					if multiStep > 0 && multiStep == len(bank) {
+						send(midi.NoteOff(uint8(config.Channels.Output), bank[multiStep-1].Note))
 					}
 				}
 				if value > 0 {
 					multiStep += 1
 				}
+			}
+			if param == config.Controllers["transpose_up"] {
+				temp_record.Transpose(1)
+			}
+			if param == config.Controllers["transpose_down"] {
+				println("transpose down")
+				temp_record.Transpose(-1)
 			}
 
 		default:

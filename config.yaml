@@ -20,6 +20,8 @@ controllers:
   incremental_add: &incremental_add 21
   multi_step: &multi_step 22
   sustain_pedal: &sustain_pedal 64
+  transpose_up: &transpose_up 23
+  transpose_down: &transpose_down 24
 
 channels:
   recorder_output: 0
@@ -190,6 +192,16 @@ keymap:
     hold: false
     param: *multi_step
     value: 64
+  44: # numpad +
+    control: true
+    hold: true
+    param: *transpose_up
+    value: 64
+  45: # numpad +
+    control: true
+    hold: true
+    param: *transpose_down
+    value: 64
 # notes
   3:
     value: 147
@@ -275,3 +287,5 @@ keymap:
     value: 96
   139:
     value: 60
+  6: 
+    value: 59

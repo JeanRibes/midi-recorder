@@ -38,15 +38,12 @@ func (r Recording) RemoveChords2() SingleRecording {
 		if ev.Msg.GetNoteOn(&ch, &key, &vel) {
 			abs_time = abs_time.Add(ev.Time)
 			on = true
-			fmt.Printf("on  %d\n", key)
 		}
 		if ev.Msg.GetNoteEnd(&ch, &key) {
 			abs_time = abs_time.Add(ev.Time)
 			on = false
-			fmt.Printf("off %d\n", key)
 		}
 		if on && previous_note < 128 { // note already playing, skip
-			fmt.Printf("skip %d\n", key)
 			continue
 		}
 		if !on && previous_note == key {
@@ -56,7 +53,6 @@ func (r Recording) RemoveChords2() SingleRecording {
 				Wait:     silence,
 			})
 			previous_note = 128
-			fmt.Printf("add %d\n", previous_note)
 			silence_start = abs_time
 		}
 		if on {
@@ -92,12 +88,10 @@ func (r Recording) RemoveChords1() SingleRecording {
 		if ev.Msg.GetNoteOn(&ch, &key, &vel) {
 			abs_time = abs_time.Add(ev.Time)
 			on = true
-			fmt.Printf("on  %d\n", key)
 		}
 		if ev.Msg.GetNoteEnd(&ch, &key) {
 			abs_time = abs_time.Add(ev.Time)
 			on = false
-			fmt.Printf("off %d\n", key)
 		}
 		if on {
 			if previous_note < 128 { // note already playing, stop it
@@ -105,8 +99,6 @@ func (r Recording) RemoveChords1() SingleRecording {
 					Note:     previous_note,
 					Duration: abs_time.Sub(previous_time),
 				})
-				println("duplicate stomped")
-				println("add", previous_note)
 				previous_note = key
 			} else {
 				previous_note = key
@@ -118,7 +110,6 @@ func (r Recording) RemoveChords1() SingleRecording {
 				Duration: abs_time.Sub(previous_time),
 			})
 			previous_note = 128
-			println("add", key)
 		}
 		previous_time = abs_time
 	}
