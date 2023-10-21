@@ -10,59 +10,152 @@ import (
 
 type Note int
 
+//go:generate stringer -type=Note
 const (
-	Do  Note = 0
-	Ré  Note = 2
-	Mi  Note = 4
-	Fa  Note = 5
-	Sol Note = 7
-	La  Note = 9
-	Si  Note = 11
+	Do       Note = 0
+	DoDièse  Note = 1
+	RéBémol  Note = 1
+	Ré       Note = 2
+	RéDièse  Note = 3
+	MiBémol  Note = 3
+	Mi       Note = 4
+	Fa       Note = 5
+	FaDièse  Note = 6
+	SolBémol Note = 6
+	Sol      Note = 7
+	SolDièse Note = 8
+	LaBémol  Note = 8
+	La       Note = 9
+	SiBémol  Note = 10
+	Si       Note = 11
 )
 
-//go:generate stringer -type=Armure
-type Armure int
+type DemiTon int
 
-const (
-	DO_MAJEUR Armure = iota
-	LA_MINEUR
+const bémol DemiTon = -1
+const dièse DemiTon = +1
 
-	FA_MAJEUR
-	RE_MINEUR
+func (dt DemiTon) Opposé() DemiTon {
+	return -1 * dt
+}
 
-	SI_BEMOL_MAJEUR
-	SOL_MINEUR
+func (note Note) Shift(demiton DemiTon) Note {
+	note = note + Note(demiton)
+	/*if note > Si {
+		note = Do
+	}
+	if note < Do {
+		note = Si
+	}*/
+	return note
+}
 
-	MI_BEMOL_MAJEUR
-	DO_MINEUR
+type Gamme struct {
+	Becarres   []Note //généré, reverse map
+	Altération DemiTon
+	Notes      []Note
+}
 
-	LA_BEMOL_MAJEUR
-	FA_MINEUR
+var Gammes map[Armure]Gamme
+var GammesNames []Armure
 
-	RE_BEMOL_MAJEUR
-	SI_BEMOL_MINEUR
+func fillGammes() {
+	Gammes = map[Armure]Gamme{
+		"Do Majeur":       {[]Note{}, bémol, []Note{}},
+		"Fa Majeur":       {[]Note{}, bémol, []Note{Si}},
+		"SiBémol Majeur":  {[]Note{}, bémol, []Note{Si, Mi}},
+		"MiBémol Majeur":  {[]Note{}, bémol, []Note{La, Si, Mi}},
+		"LaBémol Majeur":  {[]Note{}, bémol, []Note{La, Si, Ré, Mi}},
+		"RéBémol Majeur":  {[]Note{}, bémol, []Note{La, Si, Ré, Mi, Sol}},
+		"SolBémol Majeur": {[]Note{}, bémol, []Note{La, Si, Do, Ré, Mi, Sol}},
+		"FaDièse Majeur":  {[]Note{}, dièse, []Note{La, Do, Ré, Mi, Fa, Sol}},
+		"Si Majeur":       {[]Note{}, dièse, []Note{Do, Ré, Fa, Sol, La}},
+		"Mi Majeur":       {[]Note{}, dièse, []Note{Do, Ré, Fa, Sol}},
+		"La Majeur":       {[]Note{}, dièse, []Note{Do, Fa, Sol}},
+		"Ré Majeur":       {[]Note{}, dièse, []Note{Do, Fa}},
+		"Sol Majeur":      {[]Note{}, dièse, []Note{Fa}},
+	}
+	for i, gamme := range Gammes {
+		for _, note := range gamme.Notes {
+			gamme.Becarres = append(gamme.Becarres, note.Shift(gamme.Altération))
+			Gammes[i] = gamme
+		}
+	}
+	Gammes["La Mineur"] = Gammes["Do Majeur"]
+	Gammes["Ré Mineur"] = Gammes["Fa Majeur"]
+	Gammes["Sol Mineur"] = Gammes["SiBémol Majeur"]
+	Gammes["Do Mineur"] = Gammes["MiBémol Majeur"]
+	Gammes["Fa Mineur"] = Gammes["LaBémol Majeur"]
+	Gammes["SiBémo Mineur"] = Gammes["RéBémol Majeur"]
+	Gammes["MiBémol Mineur"] = Gammes["SolBémol Majeur"]
+	Gammes["RéDièse Mineur"] = Gammes["FaDièse Majeur"]
+	Gammes["SolDièse Mineur"] = Gammes["Si Majeur"]
+	Gammes["DoDièse Mineur"] = Gammes["Mi Majeur"]
+	Gammes["FaDièse Mineur"] = Gammes["La Majeur"]
+	Gammes["Si Mineur"] = Gammes["Ré Majeur"]
+	Gammes["Mi Mineur"] = Gammes["Sol Majeur"]
 
-	SOL_BEMOL_MAJEUR
-	MI_BEMOL_MINEUR
+	GammesNames = []Armure{
+		"Do Majeur",
+		"La Mineur",
+		"Fa Majeur",
+		"Ré Mineur",
+		"SiBémol Majeur",
+		"Sol Mineur",
+		"MiBémol Majeur",
+		"Do Mineur",
+		"LaBémol Majeur",
+		"Fa Mineur",
+		"RéBémol Majeur",
+		"SiBémo Mineur",
+		"SolBémol Majeur",
+		"MiBémol Mineur",
+		"FaDièse Majeur",
+		"RéDièse Mineur",
+		"Si Majeur",
+		"SolDièse Mineur",
+		"Mi Majeur",
+		"DoDièse Mineur",
+		"La Majeur",
+		"FaDièse Mineur",
+		"Ré Majeur",
+		"Si Mineur",
+		"Sol Majeur",
+		"Mi Mineur",
+	}
+}
 
-	FA_DIESE_MAJEUR
-	RE_DIESE_MINEUR
+func init() {
+	fillGammes()
+}
 
-	SI_MAJEUR
-	SOL_DIESE_MINEUR
+func (g Gamme) alter(octave int, source Note) (int, Note) {
+	for _, note := range g.Notes {
+		if source == note {
+			altered := source.Shift(g.Altération)
+			fmt.Println("alteration:", note.String(), altered.String())
+			return octave, altered
+		}
+	}
+	for _, note := range g.Becarres { // pour les bécarres
+		if source == note {
+			becarre := source.Shift(g.Altération.Opposé())
+			fmt.Println("becarre:", note.String(), becarre.String())
+			if note == Do && g.Altération == bémol {
+				return octave - 1, becarre
+			}
+			if note == Si && g.Altération == dièse {
+				return octave + 1, becarre
+			}
+			return octave, becarre
+		}
+	}
+	return octave, source
+}
 
-	MI_MAJEUR
-	DO_DIESE_MINEUR
+var Mineurs map[string]Gamme
 
-	LA_MAJEUR
-	FA_DIESE_MINEUR
-
-	RE_MAJEUR
-	SI_MINEUR
-
-	SOL_MAJEUR
-	MI_MINEUR
-)
+type Armure string
 
 func midi_to_gamme_note(midi_note int) (int, Note) {
 	note := Note(midi_note % 12)
@@ -70,13 +163,16 @@ func midi_to_gamme_note(midi_note int) (int, Note) {
 	return gamme, note
 }
 func gamme_note_to_midi(gamme int, note Note) int {
+	if note > Si {
+		note = Do
+		gamme += 1
+	}
+	if note < Do {
+		note = Si
+		gamme -= 1
+	}
 	return gamme*12 + int(note)
 }
-
-type DemiTon int
-
-const bémol DemiTon = -1
-const dièse DemiTon = +1
 
 func alter_gamme(x Note, shift DemiTon, notes ...Note) Note {
 	for _, note := range notes {
@@ -88,62 +184,13 @@ func alter_gamme(x Note, shift DemiTon, notes ...Note) Note {
 }
 
 func alter(midi_note int, alteration Armure) int {
-	gamme, note := midi_to_gamme_note(midi_note)
-	if gamme*12+int(note) != midi_note {
-		panic(fmt.Sprintf("alter: math error: %d,%d,%d", midi_note, gamme, note))
+	octave, note := midi_to_gamme_note(midi_note)
+	if octave*12+int(note) != midi_note {
+		panic(fmt.Sprintf("alter: math error: %d,%d,%d", midi_note, octave, note))
 	}
-
-	switch alteration {
-	case FA_MAJEUR, RE_MINEUR:
-		switch note {
-		case Si:
-			return gamme_note_to_midi(gamme, note-1)
-		}
-	case SI_BEMOL_MAJEUR, SOL_MINEUR:
-		switch note {
-		case Si, Mi:
-			return gamme_note_to_midi(gamme, note-1)
-		}
-	case MI_BEMOL_MAJEUR, DO_MINEUR:
-		switch note {
-		case La, Si, Mi:
-			return gamme_note_to_midi(gamme, note-1)
-		}
-	case LA_BEMOL_MAJEUR, FA_MINEUR:
-		switch note {
-		case La, Si, Ré, Mi:
-			return gamme_note_to_midi(gamme, note-1)
-		}
-	case RE_BEMOL_MAJEUR, SI_BEMOL_MINEUR:
-		switch note {
-		case Sol, La, Si, Ré, Mi:
-			return gamme_note_to_midi(gamme, note-1)
-		}
-	case SOL_BEMOL_MAJEUR, MI_BEMOL_MINEUR:
-		return gamme_note_to_midi(gamme,
-			alter_gamme(note, bémol, Sol, La, Si, Do, Ré, Mi))
-		/*switch note {
-		case Sol, La, Si, Do, Ré, Mi:
-			return gamme_note_to_midi(gamme, note-1)
-		}*/
-	case FA_DIESE_MAJEUR, RE_DIESE_MINEUR:
-		switch note {
-		case La, Do, Ré, Mi, Fa, Sol:
-			return gamme_note_to_midi(gamme, note+1)
-		}
-	case SI_MAJEUR, SOL_DIESE_MINEUR:
-		return gamme_note_to_midi(gamme, alter_gamme(note, dièse, La, Do, Ré, Fa, Sol))
-	case MI_MAJEUR, DO_DIESE_MINEUR:
-		return gamme_note_to_midi(gamme, alter_gamme(note, dièse, Do, Ré, Fa, Sol))
-	case LA_MAJEUR, FA_DIESE_MINEUR:
-		return gamme_note_to_midi(gamme, alter_gamme(note, dièse, Do, Fa, Sol))
-	case RE_MAJEUR, SI_MINEUR:
-		return gamme_note_to_midi(gamme, alter_gamme(note, dièse, Do, Fa))
-	case SOL_MAJEUR, MI_MINEUR:
-		return gamme_note_to_midi(gamme, alter_gamme(note, dièse, Fa))
-	}
-
-	return midi_note
+	gamme := Gammes[alteration]
+	octave, note = gamme.alter(octave, note)
+	return gamme_note_to_midi(octave, note)
 }
 
 func Alter(msg midi.Message, alteration Armure) midi.Message {

@@ -20,7 +20,7 @@ const NUM_BANKS = 13
 var BPM int
 var doPing bool
 var askName bool
-var armure_shift Armure = 0
+var armure_shift Armure = "Do Majeur"
 
 var play_cancel = false
 
@@ -166,11 +166,12 @@ func main() {
 			//fmt.Printf("starting note %s on channel %v with velocity %v\n", midi.Note(key), ch, vel)
 			if msg.Is(midi.NoteOnMsg) {
 				msg = midi.NoteOn(config.Channels.Output, key, vel)
+				msg = Alter(msg, armure_shift)
 				last_noteon = msg
 			} else {
 				msg = midi.NoteOff(config.Channels.Output, key)
+				msg = Alter(msg, armure_shift)
 			}
-			msg = Alter(msg, armure_shift)
 			he(send(msg))
 			if recording {
 				temp_record = append(temp_record, RecordedNote{

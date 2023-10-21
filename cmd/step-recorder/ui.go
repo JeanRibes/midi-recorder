@@ -82,20 +82,23 @@ func ui(banks *[]*Recording) {
 
 	armureLabel, _ := gtk.LabelNew("armure: pas changé")
 	armureLabel.Connect("clicked", func(self *gtk.Label) {
-		armureLabel.SetText("armure:" + armure_shift.String())
+		armureLabel.SetText("armure:" + string(armure_shift))
 	})
 
-	scale, err := gtk.ScaleNewWithRange(gtk.ORIENTATION_HORIZONTAL, 0, 26, 1)
+	scale, err := gtk.ScaleNewWithRange(gtk.ORIENTATION_HORIZONTAL, 0, 25, 1)
 	scale.Connect("change-value", func(self *gtk.Scale, scrolltype gtk.ScrollType, value float64) {
-		armure := Armure(value)
-		if armure >= DO_MAJEUR && armure <= MI_MINEUR {
-			if armure != armure_shift {
-				fmt.Printf("ancien: %d, nouveau: %d, s: %s → %s\n",
-					armure, armure_shift, armure.String(), armure_shift.String())
-			}
-			armure_shift = armure
-			armureLabel.SetText("armure:" + armure_shift.String())
+		if int(value) < 0 || int(value) > len(GammesNames)-1 {
+			println("error", value)
+			return
 		}
+		armure := GammesNames[int(value)]
+		if armure != armure_shift {
+			fmt.Printf("ancien: %s, nouveau: %s\n",
+				armure, armure_shift)
+			fmt.Println(armure)
+		}
+		armure_shift = armure
+		armureLabel.SetText("armure:" + string(armure_shift))
 	})
 	he(err)
 	main_box.Add(scale)
