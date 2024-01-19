@@ -82,10 +82,10 @@ func ui(banks *[]*Recording) {
 
 	armureLabel, _ := gtk.LabelNew("armure: pas changé")
 	armureLabel.Connect("clicked", func(self *gtk.Label) {
-		armureLabel.SetText("armure:" + string(armure_shift))
+		armureLabel.SetText("armure:" + armure_shift.ToString())
 	})
 
-	scale, err := gtk.ScaleNewWithRange(gtk.ORIENTATION_HORIZONTAL, 0, 25, 1)
+	scale, err := gtk.ScaleNewWithRange(gtk.ORIENTATION_HORIZONTAL, 0, 13, 1)
 	scale.Connect("change-value", func(self *gtk.Scale, scrolltype gtk.ScrollType, value float64) {
 		if int(value) < 0 || int(value) > len(GammesNames)-1 {
 			println("error", value)
@@ -98,7 +98,7 @@ func ui(banks *[]*Recording) {
 			fmt.Println(armure)
 		}
 		armure_shift = armure
-		armureLabel.SetText("armure:" + string(armure_shift))
+		armureLabel.SetText("armure:" + armure_shift.ToString())
 	})
 	he(err)
 	main_box.Add(scale)
@@ -107,7 +107,7 @@ func ui(banks *[]*Recording) {
 	win.Add(main_box)
 
 	// Set the default window size.
-	win.SetDefaultSize(800, 600)
+	win.SetDefaultSize(800, 300)
 
 	// Recursively show all widgets contained in this window.
 	win.ShowAll()

@@ -6,12 +6,14 @@ import (
 	"gitlab.com/gomidi/midi/v2"
 )
 
-// permet de taper au piano sans se préoccuper des dièses et bémols
+type Armure string
 
+// permet de taper au piano sans se préoccuper des dièses et bémols
 type Note int
 
 //go:generate stringer -type=Note
 const (
+	SiDièse  Note = 0 //octave +1
 	Do       Note = 0
 	DoDièse  Note = 1
 	RéBémol  Note = 1
@@ -28,12 +30,19 @@ const (
 	La       Note = 9
 	SiBémol  Note = 10
 	Si       Note = 11
+	DoBémol  Note = 11 //octave -1
 )
 
 type DemiTon int
 
-const bémol DemiTon = -1
-const dièse DemiTon = +1
+//go:generate stringer -type=DemiTon
+const (
+	bémol DemiTon = -1
+	dièse DemiTon = +1
+)
+
+/*const bémol DemiTon = -1
+const dièse DemiTon = +1*/
 
 func (dt DemiTon) Opposé() DemiTon {
 	return -1 * dt
@@ -41,12 +50,16 @@ func (dt DemiTon) Opposé() DemiTon {
 
 func (note Note) Shift(demiton DemiTon) Note {
 	note = note + Note(demiton)
-	/*if note > Si {
+
+	return note
+}
+func (note Note) Clean() Note {
+	if note > Si {
 		note = Do
 	}
 	if note < Do {
 		note = Si
-	}*/
+	}
 	return note
 }
 
@@ -59,29 +72,37 @@ type Gamme struct {
 var Gammes map[Armure]Gamme
 var GammesNames []Armure
 
+func (armure Armure) ToString() string {
+	gamme, ok := Gammes[armure]
+	if !ok {
+		return "erreur!"
+	}
+	return fmt.Sprintf("%s (%d %s)", armure, len(gamme.Notes), gamme.Altération.String())
+}
+
 func fillGammes() {
 	Gammes = map[Armure]Gamme{
 		"Do Majeur":       {[]Note{}, bémol, []Note{}},
 		"Fa Majeur":       {[]Note{}, bémol, []Note{Si}},
 		"SiBémol Majeur":  {[]Note{}, bémol, []Note{Si, Mi}},
-		"MiBémol Majeur":  {[]Note{}, bémol, []Note{La, Si, Mi}},
-		"LaBémol Majeur":  {[]Note{}, bémol, []Note{La, Si, Ré, Mi}},
-		"RéBémol Majeur":  {[]Note{}, bémol, []Note{La, Si, Ré, Mi, Sol}},
-		"SolBémol Majeur": {[]Note{}, bémol, []Note{La, Si, Do, Ré, Mi, Sol}},
-		"FaDièse Majeur":  {[]Note{}, dièse, []Note{La, Do, Ré, Mi, Fa, Sol}},
-		"Si Majeur":       {[]Note{}, dièse, []Note{Do, Ré, Fa, Sol, La}},
-		"Mi Majeur":       {[]Note{}, dièse, []Note{Do, Ré, Fa, Sol}},
-		"La Majeur":       {[]Note{}, dièse, []Note{Do, Fa, Sol}},
-		"Ré Majeur":       {[]Note{}, dièse, []Note{Do, Fa}},
+		"MiBémol Majeur":  {[]Note{}, bémol, []Note{Si, Mi, La}},
+		"LaBémol Majeur":  {[]Note{}, bémol, []Note{Si, Mi, La, Ré}},
+		"RéBémol Majeur":  {[]Note{}, bémol, []Note{Si, Mi, La, Ré, Sol}},
+		"SolBémol Majeur": {[]Note{}, bémol, []Note{Si, Mi, La, Ré, Sol, Do}},
+		"FaDièse Majeur":  {[]Note{}, dièse, []Note{Fa, Do, Sol, Ré, La, Fa}},
+		"Si Majeur":       {[]Note{}, dièse, []Note{Fa, Do, Sol, Ré, La}},
+		"Mi Majeur":       {[]Note{}, dièse, []Note{Fa, Do, Sol, Ré}},
+		"La Majeur":       {[]Note{}, dièse, []Note{Fa, Do, Sol}},
+		"Ré Majeur":       {[]Note{}, dièse, []Note{Fa, Do}},
 		"Sol Majeur":      {[]Note{}, dièse, []Note{Fa}},
 	}
 	for i, gamme := range Gammes {
 		for _, note := range gamme.Notes {
-			gamme.Becarres = append(gamme.Becarres, note.Shift(gamme.Altération))
+			gamme.Becarres = append(gamme.Becarres, note.Shift(gamme.Altération).Clean())
 			Gammes[i] = gamme
 		}
 	}
-	Gammes["La Mineur"] = Gammes["Do Majeur"]
+	/*Gammes["La Mineur"] = Gammes["Do Majeur"]
 	Gammes["Ré Mineur"] = Gammes["Fa Majeur"]
 	Gammes["Sol Mineur"] = Gammes["SiBémol Majeur"]
 	Gammes["Do Mineur"] = Gammes["MiBémol Majeur"]
@@ -93,35 +114,38 @@ func fillGammes() {
 	Gammes["DoDièse Mineur"] = Gammes["Mi Majeur"]
 	Gammes["FaDièse Mineur"] = Gammes["La Majeur"]
 	Gammes["Si Mineur"] = Gammes["Ré Majeur"]
-	Gammes["Mi Mineur"] = Gammes["Sol Majeur"]
+	Gammes["Mi Mineur"] = Gammes["Sol Majeur"]*/
 
 	GammesNames = []Armure{
 		"Do Majeur",
-		"La Mineur",
+		//"La Mineur",
 		"Fa Majeur",
-		"Ré Mineur",
+		//"Ré Mineur",
 		"SiBémol Majeur",
-		"Sol Mineur",
+		//"Sol Mineur",
 		"MiBémol Majeur",
-		"Do Mineur",
+		//"Do Mineur",
 		"LaBémol Majeur",
-		"Fa Mineur",
+		//"Fa Mineur",
 		"RéBémol Majeur",
-		"SiBémo Mineur",
+		//"SiBémo Mineur",
 		"SolBémol Majeur",
-		"MiBémol Mineur",
+		//"MiBémol Mineur",
 		"FaDièse Majeur",
-		"RéDièse Mineur",
+		//"RéDièse Mineur",
 		"Si Majeur",
-		"SolDièse Mineur",
+		//	"SolDièse Mineur",
 		"Mi Majeur",
-		"DoDièse Mineur",
+		//	"DoDièse Mineur",
 		"La Majeur",
-		"FaDièse Mineur",
+		//"FaDièse Mineur",
 		"Ré Majeur",
-		"Si Mineur",
+		//	"Si Mineur",
 		"Sol Majeur",
-		"Mi Mineur",
+		//"Mi Mineur",
+	}
+	for key, gamme := range Gammes {
+		fmt.Printf("%s %#v %#v, %s\n", key, gamme.Notes, gamme.Becarres, gamme.Altération.String())
 	}
 }
 
@@ -139,7 +163,7 @@ func (g Gamme) alter(octave int, source Note) (int, Note) {
 	}
 	for _, note := range g.Becarres { // pour les bécarres
 		if source == note {
-			becarre := source.Shift(g.Altération.Opposé())
+			becarre := source.Shift(g.Altération.Opposé()).Clean()
 			fmt.Println("becarre:", note.String(), becarre.String())
 			if note == Do && g.Altération == bémol {
 				return octave - 1, becarre
@@ -154,8 +178,6 @@ func (g Gamme) alter(octave int, source Note) (int, Note) {
 }
 
 var Mineurs map[string]Gamme
-
-type Armure string
 
 func midi_to_gamme_note(midi_note int) (int, Note) {
 	note := Note(midi_note % 12)

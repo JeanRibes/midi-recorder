@@ -8,6 +8,7 @@ func _() {
 	// An "invalid array index" compiler error signifies that the constant values have changed.
 	// Re-run the stringer command to generate them again.
 	var x [1]struct{}
+	_ = x[SiDièse-0]
 	_ = x[Do-0]
 	_ = x[DoDièse-1]
 	_ = x[RéBémol-1]
@@ -24,11 +25,12 @@ func _() {
 	_ = x[La-9]
 	_ = x[SiBémol-10]
 	_ = x[Si-11]
+	_ = x[DoBémol-11]
 }
 
-const _Note_name = "DoDoDièseRéRéDièseMiFaFaDièseSolSolDièseLaSiBémolSi"
+const _Note_name = "SiDièseDoDièseRéRéDièseMiFaFaDièseSolSolDièseLaSiBémolSi"
 
-var _Note_index = [...]uint8{0, 2, 10, 13, 22, 24, 26, 34, 37, 46, 48, 56, 58}
+var _Note_index = [...]uint8{0, 8, 16, 19, 28, 30, 32, 40, 43, 52, 54, 62, 64}
 
 func (i Note) String() string {
 	if i < 0 || i >= Note(len(_Note_index)-1) {
