@@ -4,7 +4,7 @@
         {
             "label": "Build and run",
             "type": "shell",
-            "command": "cd cmd/serial-piano; go build; cd ../step-recorder; go build",
+            "command": "go build midi/cmd/serial-piano midi/cmd/step-recorder midi/cmd/usb-piano",
             "group": {
                 "kind": "build",
                 "isDefault": true
