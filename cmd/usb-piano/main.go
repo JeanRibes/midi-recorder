@@ -4,8 +4,10 @@ import (
 	"bytes"
 	"flag"
 	"fmt"
+	"log"
 	"os"
 	"os/signal"
+	"strings"
 	"time"
 
 	"gitlab.com/gomidi/midi/v2"
@@ -46,6 +48,7 @@ func main() {
 
 	send, err := midi.SendTo(out)
 	he(err)
+	he(send(midi.ControlChange(0, 64, 127))) //sustain
 	/*send(midi.NoteOn(0, 70, 80))
 	time.Sleep(100 * time.Millisecond)
 	he(send(midi.NoteOff(0, 70)))*/
@@ -58,7 +61,6 @@ func main() {
 
 	shoudStartRecording := false
 	isRecording := false
-	var recordingKey uint8
 
 	isSteps := false
 	stepIndex := 0
@@ -70,63 +72,44 @@ func main() {
 			on := msg.IsOneOf(midi.NoteOnMsg)
 
 			if isSteps {
+				if stepIndex > len(stepNotes)-1 {
+					return
+				}
 				note := stepNotes[stepIndex]
 				if on {
 					send(midi.NoteOn(ch, note, vel))
 				} else {
 					send(midi.NoteOn(ch, note, vel))
 					stepIndex += 1
-					if stepIndex > len(stepNotes)-1 {
-						stepIndex = 0
-					}
 				}
+				return
 			}
 			if shoudStartRecording && on {
 				// START record
 				shoudStartRecording = false
 				isRecording = true
-				recordingKey = key
 				main = smf.Track{}
 				main.Add(0, smf.MetaTempo(BPM))
-				println("start rec")
-				BusFromLoopToUI <- Message{ev: RecordStart, number: int(key)}
-				absmillisec = 0
-				return
+				absmillisec = absms
+				/*main.Add(0, msg)
+				send(msg)
+				return*/
 			}
 			if isRecording {
-				if key == recordingKey && on {
-					//STOP RECORD
-					BusFromLoopToUI <- Message{ev: RecordStop}
-					main.Close(0)
-					isRecording = false
-				} else {
-					send(msg)
-					deltams := absms - absmillisec
-					absmillisec = absms
-					delta := TICKS.Ticks(BPM, time.Duration(deltams)*time.Millisecond)
-					main.Add(delta, msg)
-				}
-			} else {
-				send(msg)
+				deltams := absms - absmillisec
+				absmillisec = absms
+				delta := TICKS.Ticks(BPM, time.Duration(deltams)*time.Millisecond)
+				main.Add(delta, msg)
 			}
+			send(msg)
 		case msg.GetControlChange(&ch, &key, &vel):
 			println(ch, key, vel)
-			if isRecording && vel == 127 {
-				//STOP record
-				BusFromLoopToUI <- Message{ev: RecordStop}
-				main.Close(0)
-				isRecording = false
-			}
-			if shoudStartRecording && vel == 127 {
-				// START record
-				shoudStartRecording = false
-				isRecording = true
-				recordingKey = 0
-				main = smf.Track{}
-				main.Add(0, smf.MetaTempo(BPM))
-				println("start rec")
-				BusFromLoopToUI <- Message{ev: RecordStart, number: 0}
-				absmillisec = 0
+			if isSteps {
+				stepIndex = 0
+			} else {
+				if vel == 127 {
+					BusFromUItoLoop <- Message{ev: Record}
+				}
 			}
 		}
 	})
@@ -144,12 +127,29 @@ func main() {
 		for {
 			msg := <-BusFromUItoLoop
 			switch msg.ev {
-			case RecordStart:
+			case Record:
 				println("loop: record SYN")
-				time.Sleep(time.Second)
-				shoudStartRecording = true
+				if shoudStartRecording && !isRecording {
+					shoudStartRecording = false
+					BusFromLoopToUI <- Message{ev: Record, boolean: false}
+					log.Println("cancel recording")
+					continue
+				}
+				// time.Sleep(time.Second)
+				if isRecording { // STOP RECORD
+					isRecording = false
+					BusFromLoopToUI <- Message{ev: Record, boolean: false}
+					log.Println("stop recording")
+					main.Close(0)
+				} else { //START RECORD
+					shoudStartRecording = true
+					isRecording = false
+					BusFromLoopToUI <- Message{ev: Record, boolean: true}
+					log.Println("start recording")
+				}
 			case PlayPause:
 				go func() {
+					log.Println("start play")
 					var bf bytes.Buffer
 					tmpFile := smf.New()
 					tmpFile.Add(main)
@@ -158,15 +158,15 @@ func main() {
 					player := smf.ReadTracksFrom(&bf)
 					he(player.Play(out))
 					BusFromLoopToUI <- Message{ev: PlayPause}
-					println("end play")
+					log.Println("end play")
 				}()
 			case Quit:
-				println("quit")
+				log.Println("quit")
 				stop()
 				quit <- struct{}{}
 			case Quantize:
 				go func() {
-					fmt.Printf("quantize at %d BPM\n", msg.number)
+					log.Printf("quantize at %d BPM\n", msg.number)
 					var bf bytes.Buffer
 					tmpFile := smf.New()
 					main[0].Message = smf.MetaTempo(float64(msg.number))
@@ -175,12 +175,47 @@ func main() {
 					he(quantizer.Quantize(&bf, &bf))
 					main = smf.ReadTracksFrom(&bf).SMF().Tracks[0]
 					BusFromLoopToUI <- Message{ev: Quantize}
-					println("quantize done")
+					log.Println("quantize done")
 				}()
 			case StepMode:
+				log.Println("set steps mode to", isSteps)
 				isSteps = !isSteps
-				println("set bool mode to", isSteps)
+				stepIndex = 0
 				BusFromLoopToUI <- Message{ev: StepMode, boolean: isSteps}
+				if isSteps {
+					stepNotes = trackToSteps(main)
+				}
+			case LoadFromFile:
+				log.Println("loading file", msg.str)
+				file, err := os.Open(msg.str)
+				if err != nil {
+					log.Println(err)
+					BusFromLoopToUI <- Message{ev: Error, str: err.Error()}
+					continue
+				}
+				midiFile := smf.ReadTracksFrom(file).SMF()
+				if midiFile == nil || midiFile.NumTracks() < 1 {
+					log.Println("empty MIDI file")
+					BusFromLoopToUI <- Message{ev: Error, str: "pas un fichier MIDI"}
+					continue
+				}
+				main = midiFile.Tracks[0]
+			case SaveToFile:
+				fileName := msg.str
+				if !strings.HasSuffix(fileName, ".mid") {
+					fileName += ".mid"
+				}
+				log.Println("saving to", fileName)
+				midiFile := smf.New()
+				main.Close(0)
+				if err := midiFile.Add(main); err != nil {
+					log.Println(err)
+					continue
+				}
+				if err := midiFile.WriteFile(fileName); err != nil {
+					log.Println(err.Error())
+				}
+
 			}
 		}
 	}()
@@ -209,10 +244,10 @@ func he(err error) {
 	}
 }
 
-func trackToSteps(tr *smf.Track) []uint8 {
+func trackToSteps(tr smf.Track) []uint8 {
 	steps := []uint8{}
 	var ch, key, vel uint8
-	for _, ev := range *tr {
+	for _, ev := range tr {
 		if ev.Message.GetNoteOn(&ch, &key, &vel) {
 			steps = append(steps, key)
 		}

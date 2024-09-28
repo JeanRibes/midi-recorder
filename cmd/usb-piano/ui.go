@@ -1,7 +1,6 @@
 package main
 
 import (
-	"fmt"
 	"log"
 	"strconv"
 
@@ -27,7 +26,7 @@ func ui() {
 	recordBtn.SetLabel("Record")
 	recordBtn.Connect("clicked", func() {
 		recordBtn.SetSensitive(false)
-		BusFromUItoLoop <- Message{ev: RecordStart}
+		BusFromUItoLoop <- Message{ev: Record}
 	})
 
 	playBtn, _ := gtk.ButtonNewWithLabel("Play")
@@ -65,10 +64,34 @@ func ui() {
 		BusFromUItoLoop <- Message{ev: StepMode}
 	})
 
+	loadFileBtn, _ := gtk.ButtonNewWithLabel("Charger depuis fichier")
+	loadFileBtn.Connect("clicked", func() {
+		d, err := gtk.FileChooserDialogNewWith2Buttons("Charger MIDI", win, gtk.FILE_CHOOSER_ACTION_OPEN, "Ouvrir", gtk.RESPONSE_ACCEPT, "Annuler", gtk.RESPONSE_CANCEL)
+		he(err)
+		response := d.Run()
+		if response == gtk.RESPONSE_ACCEPT {
+			BusFromUItoLoop <- Message{ev: LoadFromFile, str: d.GetFilename()}
+		}
+		d.Destroy()
+	})
+
+	saveFileBtn, _ := gtk.ButtonNewWithLabel("Sauvegarder vers fichier")
+	saveFileBtn.Connect("clicked", func() {
+		d, err := gtk.FileChooserDialogNewWith2Buttons("Enregistrer MIDI", win, gtk.FILE_CHOOSER_ACTION_SAVE, "Sauvegarder", gtk.RESPONSE_ACCEPT, "Annuler", gtk.RESPONSE_CANCEL)
+		he(err)
+		response := d.Run()
+		if response == gtk.RESPONSE_ACCEPT {
+			BusFromUItoLoop <- Message{ev: SaveToFile, str: d.GetFilename()}
+		}
+		d.Destroy()
+	})
+
 	mainBox.Add(recordBtn)
 	mainBox.Add(quantizeBox)
 	mainBox.Add(playBtn)
 	mainBox.Add(stepBtn)
+	mainBox.Add(loadFileBtn)
+	mainBox.Add(saveFileBtn)
 
 	win.Add(mainBox)
 	win.SetDefaultSize(800, 300)
@@ -78,15 +101,18 @@ func ui() {
 		for {
 			msg := <-BusFromLoopToUI
 			switch msg.ev {
-			case RecordStart:
-				glib.IdleAdd(func() {
-					recordBtn.SetLabel(fmt.Sprintf("Recording, press %d to end", msg.number))
-				})
-			case RecordStop:
-				glib.IdleAdd(func() {
-					recordBtn.SetSensitive(true)
-					recordBtn.SetLabel("Record")
-				})
+			case Record:
+				if msg.boolean {
+					glib.IdleAdd(func() {
+						recordBtn.SetLabel("Stop Recording (or press sustain)")
+						recordBtn.SetSensitive(true)
+					})
+				} else {
+					glib.IdleAdd(func() {
+						recordBtn.SetSensitive(true)
+						recordBtn.SetLabel("Record")
+					})
+				}
 			case PlayPause:
 				glib.IdleAdd(func() { playBtn.SetSensitive(true) })
 			case Quantize:
@@ -99,6 +125,13 @@ func ui() {
 						stepBtn.SetLabel("Activer mode steps")
 					}
 				})
+			case Error:
+				glib.IdleAdd(func() {
+					d := gtk.MessageDialogNew(win, gtk.DIALOG_MODAL, gtk.MESSAGE_ERROR, gtk.BUTTONS_CLOSE, "erreur :"+msg.str)
+					d.Connect("response", d.Destroy)
+					d.Run()
+				})
+
 			}
 		}
 	}()

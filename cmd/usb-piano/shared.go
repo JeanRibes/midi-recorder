@@ -4,18 +4,20 @@ type Event int
 
 const (
 	Quit Event = iota
-	RecordStart
-	RecordStop
+	Record
 	PlayPause
 	Quantize
 	StepMode
+	LoadFromFile
+	SaveToFile
+	Error
 )
 
 type Message struct {
 	ev      Event
 	number  int
 	boolean bool
-	//str    *string
+	str     string
 }
 
 var BusFromUItoLoop chan Message
