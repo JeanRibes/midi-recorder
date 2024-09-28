@@ -68,6 +68,13 @@ func ui() {
 	loadFileBtn.Connect("clicked", func() {
 		d, err := gtk.FileChooserDialogNewWith2Buttons("Charger MIDI", win, gtk.FILE_CHOOSER_ACTION_OPEN, "Ouvrir", gtk.RESPONSE_ACCEPT, "Annuler", gtk.RESPONSE_CANCEL)
 		he(err)
+		filter, _ := gtk.FileFilterNew()
+		filter.AddPattern("*.mid")
+		filter.AddPattern("*.midi")
+		filter.AddMimeType("audio/midi")
+		d.SetFilter(filter)
+		d.SetKeepAbove(false)
+		d.SetKeepBelow(true)
 		response := d.Run()
 		if response == gtk.RESPONSE_ACCEPT {
 			BusFromUItoLoop <- Message{ev: LoadFromFile, str: d.GetFilename()}
@@ -77,13 +84,25 @@ func ui() {
 
 	saveFileBtn, _ := gtk.ButtonNewWithLabel("Sauvegarder vers fichier")
 	saveFileBtn.Connect("clicked", func() {
+		// d, err := gtk.FileChooserNativeDialogNew("Enregistrer MIDI", win, gtk.FILE_CHOOSER_ACTION_SAVE, "Sauvegarder", "Annuler")
+		// he(err)
+
 		d, err := gtk.FileChooserDialogNewWith2Buttons("Enregistrer MIDI", win, gtk.FILE_CHOOSER_ACTION_SAVE, "Sauvegarder", gtk.RESPONSE_ACCEPT, "Annuler", gtk.RESPONSE_CANCEL)
 		he(err)
+		d.SetDoOverwriteConfirmation(true)
 		response := d.Run()
+		println(response)
 		if response == gtk.RESPONSE_ACCEPT {
 			BusFromUItoLoop <- Message{ev: SaveToFile, str: d.GetFilename()}
 		}
 		d.Destroy()
+	})
+
+	errors := ""
+	errorDialog := gtk.MessageDialogNew(win, gtk.DIALOG_MODAL, gtk.MESSAGE_ERROR, gtk.BUTTONS_CLOSE, "Erreur")
+	errorDialog.Connect("response", func() {
+		errorDialog.Hide()
+		errors = ""
 	})
 
 	mainBox.Add(recordBtn)
@@ -94,7 +113,7 @@ func ui() {
 	mainBox.Add(saveFileBtn)
 
 	win.Add(mainBox)
-	win.SetDefaultSize(800, 300)
+	//win.SetDefaultSize(800, 300)
 	win.ShowAll()
 
 	go func() {
@@ -126,10 +145,14 @@ func ui() {
 					}
 				})
 			case Error:
+				if len(errors) == 0 {
+					errors = msg.str
+				} else {
+					errors += "\n\n" + msg.str
+				}
 				glib.IdleAdd(func() {
-					d := gtk.MessageDialogNew(win, gtk.DIALOG_MODAL, gtk.MESSAGE_ERROR, gtk.BUTTONS_CLOSE, "erreur :"+msg.str)
-					d.Connect("response", d.Destroy)
-					d.Run()
+					errorDialog.FormatSecondaryText(errors)
+					errorDialog.Show()
 				})
 
 			}
