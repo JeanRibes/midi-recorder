@@ -9,16 +9,16 @@ import (
 	"github.com/gotk3/gotk3/gtk"
 )
 
-func ui(ctx context.Context, cancel func()) {
+func ui(ctx context.Context, cancel func(), inP, outP int, inL []string, inN []int, outL []string, outN []int) {
 	gtk.Init(nil)
 	win, err := gtk.WindowNew(gtk.WINDOW_TOPLEVEL)
 	if err != nil {
 		log.Fatal("Unable to create window:", err)
 	}
 	win.SetTitle("Step-Recorder")
-	win.Connect("destroy", func() {
+	windestroyhandle := win.Connect("destroy", func() {
 		//cancel()
-		//log.Println("ui: close win, cancel")
+		log.Println("ui: close win, sending quit event")
 		MasterControl <- Message{ev: Quit}
 	})
 
@@ -104,6 +104,65 @@ func ui(ctx context.Context, cancel func()) {
 		errors = ""
 	})
 
+	reloadBtn, _ := gtk.ButtonNewWithLabel("Reload UI")
+	reloadBtn.Connect("clicked", func() {
+		cancel()
+	})
+	listIn, _ := gtk.ListStoreNew(glib.TYPE_INT, glib.TYPE_STRING)
+	for i, port := range inL {
+		iter := listIn.Append()
+		listIn.Set(iter,
+			[]int{0, 1},
+			[]interface{}{inN[i], port},
+		)
+		println(inN[i], port)
+	}
+	listOut, _ := gtk.ListStoreNew(glib.TYPE_INT, glib.TYPE_STRING)
+	for i, port := range outL {
+		iter := listOut.Append()
+		listOut.Set(iter,
+			[]int{0, 1},
+			[]interface{}{outN[i], port},
+		)
+	}
+	comboInPorts, _ := gtk.ComboBoxNewWithModel(listIn)
+	rendererIn, _ := gtk.CellRendererTextNew()
+	comboInPorts.PackStart(rendererIn, true)
+	//comboInPorts.AddAttribute(rendererIn, "number", 0)
+	comboInPorts.AddAttribute(rendererIn, "text", 1)
+	comboInPorts.SetActive(inP)
+
+	comboOutPorts, _ := gtk.ComboBoxNewWithModel(listOut)
+	rendererOut, _ := gtk.CellRendererTextNew()
+	comboOutPorts.PackStart(rendererOut, true)
+	comboOutPorts.AddAttribute(rendererOut, "text", 1)
+	comboOutPorts.SetActive(outP)
+
+	changePortsBtn, _ := gtk.ButtonNewWithLabel("Reconnect MIDI")
+	changePortsBtn.Connect("clicked", func() {
+		inIter, err := comboInPorts.GetActiveIter()
+		he(err)
+		inVal, err := listIn.GetValue(inIter, 0)
+		he(err)
+		inN, err := inVal.GoValue()
+		he(err)
+
+		outIter, _ := comboOutPorts.GetActiveIter()
+		outVal, _ := listOut.GetValue(outIter, 0)
+		outN, _ := outVal.GoValue()
+		MasterControl <- Message{
+			ev:     RestartMIDI,
+			number: inN.(int),
+			port2:  outN.(int),
+		}
+	})
+
+	mainBox.Add(reloadBtn)
+
+	mainBox.Add(comboInPorts)
+	mainBox.Add(comboOutPorts)
+	mainBox.Add(changePortsBtn)
+
 	mainBox.Add(recordBtn)
 	mainBox.Add(quantizeBox)
 	mainBox.Add(playBtn)
@@ -164,5 +223,7 @@ func ui(ctx context.Context, cancel func()) {
 	}()
 	gtk.Main()
 	log.Println("ui: exited")
+	win.HandlerDisconnect(windestroyhandle)
+	win.Destroy()
 
 }

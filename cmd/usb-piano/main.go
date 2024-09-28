@@ -42,10 +42,11 @@ func main() {
 	mainCtx, mainCancel := context.WithCancel(context.Background())
 
 	uiCtx, cancelUi := context.WithCancel(mainCtx)
-	go ui(uiCtx, cancelUi)
-
 	loopCtx, cancelLoop := context.WithCancel(mainCtx)
-	go loop(loopCtx, cancelLoop, in, out)
+	cancelUi()
+	cancelLoop()
+	//go ui(uiCtx, cancelUi)
+	//go loop(loopCtx, cancelLoop, in, out)
 
 	signalCh := make(chan os.Signal, 1)
 	signal.Notify(signalCh, os.Interrupt)
@@ -63,13 +64,34 @@ masterLoop:
 				log.Println("main quit")
 				mainCancel()
 				break masterLoop
+			case RestartMIDI:
+				inN := m.number
+				outN := m.port2
+				log.Printf("reconnect %d %d\n", inN, outN)
+				in, err = midi.InPort(inN)
+				if err != nil {
+					log.Println(err)
+					continue
+				}
+				out, err = midi.OutPort(outN)
+				if err != nil {
+					log.Println(err)
+					continue
+				}
+				log.Println("reconnect input:", in.String())
+				log.Println("reconnect output:", out.String())
+				cancelLoop()
+				he(drv.Close())
+				midi.CloseDriver()
+
 			}
 		case <-uiCtx.Done():
 			// UI closed, on relance
 			uiCtx, cancelUi = context.WithCancel(mainCtx)
 			//time.Sleep(time.Second)
 			log.Println("mc: restart UI")
-			go ui(uiCtx, cancelUi)
+			inL, inN, outL, outN := listPorts()
+			go ui(uiCtx, cancelUi, in.Number(), out.Number(), inL, inN, outL, outN)
 		case <-loopCtx.Done():
 			loopCtx, cancelLoop = context.WithCancel(mainCtx)
 			log.Println("mc: restart Loop")
@@ -80,6 +102,18 @@ masterLoop:
 
 	he(drv.Close())
 	midi.CloseDriver()
+}
+
+func listPorts() (inL []string, inN []int, outL []string, outN []int) {
+	for _, port := range midi.GetInPorts() {
+		inL = append(inL, port.String())
+		inN = append(inN, port.Number())
+	}
+	for _, port := range midi.GetOutPorts() {
+		outL = append(outL, port.String())
+		outN = append(outN, port.Number())
+	}
+	return
 }
 
 /*
@@ -279,7 +313,8 @@ loopchan:
 
 func he(err error) {
 	if err != nil {
-		log.Fatal("fatale, ", err.Error())
+		//log.Fatal("fatale, ", err.Error())
+		panic(err)
 	}
 }
 

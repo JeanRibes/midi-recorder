@@ -11,6 +11,7 @@ const (
 	LoadFromFile
 	SaveToFile
 	Error
+	RestartMIDI
 )
 
 type Message struct {
