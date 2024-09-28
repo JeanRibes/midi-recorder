@@ -1,6 +1,7 @@
 package main
 
 import (
+	"context"
 	"log"
 	"strconv"
 
@@ -8,7 +9,7 @@ import (
 	"github.com/gotk3/gotk3/gtk"
 )
 
-func ui() {
+func ui(ctx context.Context, cancel func()) {
 	gtk.Init(nil)
 	win, err := gtk.WindowNew(gtk.WINDOW_TOPLEVEL)
 	if err != nil {
@@ -16,8 +17,9 @@ func ui() {
 	}
 	win.SetTitle("Step-Recorder")
 	win.Connect("destroy", func() {
-		BusFromUItoLoop <- Message{ev: Quit}
-		gtk.MainQuit()
+		//cancel()
+		//log.Println("ui: close win, cancel")
+		MasterControl <- Message{ev: Quit}
 	})
 
 	mainBox, _ := gtk.BoxNew(gtk.ORIENTATION_VERTICAL, 1)
@@ -26,13 +28,13 @@ func ui() {
 	recordBtn.SetLabel("Record")
 	recordBtn.Connect("clicked", func() {
 		recordBtn.SetSensitive(false)
-		BusFromUItoLoop <- Message{ev: Record}
+		SinkUI <- Message{ev: Record}
 	})
 
 	playBtn, _ := gtk.ButtonNewWithLabel("Play")
 	playBtn.Connect("clicked", func() {
 		playBtn.SetSensitive(false)
-		BusFromUItoLoop <- Message{ev: PlayPause}
+		SinkUI <- Message{ev: PlayPause}
 	})
 
 	quantizeBox, _ := gtk.BoxNew(gtk.ORIENTATION_HORIZONTAL, 10)
@@ -46,7 +48,7 @@ func ui() {
 		if err == nil {
 			var i int64
 			if i, err = strconv.ParseInt(txt, 10, 32); err == nil {
-				BusFromUItoLoop <- Message{ev: Quantize, number: int(i)}
+				SinkUI <- Message{ev: Quantize, number: int(i)}
 			} else {
 				println(err.Error())
 				quantizeBtn.SetSensitive(true)
@@ -61,7 +63,7 @@ func ui() {
 
 	stepBtn, _ := gtk.ButtonNewWithLabel("Activer Mode steps")
 	stepBtn.Connect("clicked", func() {
-		BusFromUItoLoop <- Message{ev: StepMode}
+		SinkUI <- Message{ev: StepMode}
 	})
 
 	loadFileBtn, _ := gtk.ButtonNewWithLabel("Charger depuis fichier")
@@ -77,23 +79,20 @@ func ui() {
 		d.SetKeepBelow(true)
 		response := d.Run()
 		if response == gtk.RESPONSE_ACCEPT {
-			BusFromUItoLoop <- Message{ev: LoadFromFile, str: d.GetFilename()}
+			SinkUI <- Message{ev: LoadFromFile, str: d.GetFilename()}
 		}
 		d.Destroy()
 	})
 
 	saveFileBtn, _ := gtk.ButtonNewWithLabel("Sauvegarder vers fichier")
 	saveFileBtn.Connect("clicked", func() {
-		// d, err := gtk.FileChooserNativeDialogNew("Enregistrer MIDI", win, gtk.FILE_CHOOSER_ACTION_SAVE, "Sauvegarder", "Annuler")
-		// he(err)
-
 		d, err := gtk.FileChooserDialogNewWith2Buttons("Enregistrer MIDI", win, gtk.FILE_CHOOSER_ACTION_SAVE, "Sauvegarder", gtk.RESPONSE_ACCEPT, "Annuler", gtk.RESPONSE_CANCEL)
 		he(err)
 		d.SetDoOverwriteConfirmation(true)
 		response := d.Run()
 		println(response)
 		if response == gtk.RESPONSE_ACCEPT {
-			BusFromUItoLoop <- Message{ev: SaveToFile, str: d.GetFilename()}
+			SinkUI <- Message{ev: SaveToFile, str: d.GetFilename()}
 		}
 		d.Destroy()
 	})
@@ -113,51 +112,57 @@ func ui() {
 	mainBox.Add(saveFileBtn)
 
 	win.Add(mainBox)
-	//win.SetDefaultSize(800, 300)
 	win.ShowAll()
 
 	go func() {
 		for {
-			msg := <-BusFromLoopToUI
-			switch msg.ev {
-			case Record:
-				if msg.boolean {
-					glib.IdleAdd(func() {
-						recordBtn.SetLabel("Stop Recording (or press sustain)")
-						recordBtn.SetSensitive(true)
-					})
-				} else {
-					glib.IdleAdd(func() {
-						recordBtn.SetSensitive(true)
-						recordBtn.SetLabel("Record")
-					})
-				}
-			case PlayPause:
-				glib.IdleAdd(func() { playBtn.SetSensitive(true) })
-			case Quantize:
-				glib.IdleAdd(func() { quantizeBtn.SetSensitive(true) })
-			case StepMode:
-				glib.IdleAdd(func() {
+			select {
+			case <-ctx.Done():
+				log.Println("ui: chan Done, quitting")
+				gtk.MainQuit()
+				return
+			case msg := <-SinkLoop:
+				switch msg.ev {
+				case Record:
 					if msg.boolean {
-						stepBtn.SetLabel("Désactiver mode steps")
+						glib.IdleAdd(func() {
+							recordBtn.SetLabel("Stop Recording (or press sustain)")
+							recordBtn.SetSensitive(true)
+						})
 					} else {
-						stepBtn.SetLabel("Activer mode steps")
+						glib.IdleAdd(func() {
+							recordBtn.SetSensitive(true)
+							recordBtn.SetLabel("Record")
+						})
 					}
-				})
-			case Error:
-				if len(errors) == 0 {
-					errors = msg.str
-				} else {
-					errors += "\n\n" + msg.str
-				}
-				glib.IdleAdd(func() {
-					errorDialog.FormatSecondaryText(errors)
-					errorDialog.Show()
-				})
+				case PlayPause:
+					glib.IdleAdd(func() { playBtn.SetSensitive(true) })
+				case Quantize:
+					glib.IdleAdd(func() { quantizeBtn.SetSensitive(true) })
+				case StepMode:
+					glib.IdleAdd(func() {
+						if msg.boolean {
+							stepBtn.SetLabel("Désactiver mode steps")
+						} else {
+							stepBtn.SetLabel("Activer mode steps")
+						}
+					})
+				case Error:
+					if len(errors) == 0 {
+						errors = msg.str
+					} else {
+						errors += "\n\n" + msg.str
+					}
+					glib.IdleAdd(func() {
+						errorDialog.FormatSecondaryText(errors)
+						errorDialog.Show()
+					})
 
+				}
 			}
 		}
 	}()
 	gtk.Main()
+	log.Println("ui: exited")
 
 }

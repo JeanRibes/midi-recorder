@@ -1,1 +1,7 @@
 *.mid
+cmd/step-recorder/step-recorder
+cmd/step-recorder/step-recorder
+cmd/usb-piano/usb-piano
+serial-piano
+snapper
+usb-piano

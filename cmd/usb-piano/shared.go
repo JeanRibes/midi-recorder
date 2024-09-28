@@ -18,12 +18,14 @@ type Message struct {
 	number  int
 	boolean bool
 	str     string
+	port2   int
 }
 
-var BusFromUItoLoop chan Message
-var BusFromLoopToUI chan Message
+var SinkUI chan Message
+var SinkLoop chan Message
+var MasterControl chan Message
 
 func init() {
-	BusFromUItoLoop = make(chan Message, 10)
-	BusFromLoopToUI = make(chan Message, 10)
+	SinkUI = make(chan Message, 10)
+	SinkLoop = make(chan Message, 10)
 }

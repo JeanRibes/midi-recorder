@@ -2,8 +2,8 @@ package main
 
 import (
 	"bytes"
+	"context"
 	"flag"
-	"fmt"
 	"log"
 	"os"
 	"os/signal"
@@ -20,31 +20,93 @@ import (
 var BPM = float64(120)
 
 func main() {
+	for _, port := range midi.GetInPorts() {
+		//log.Println(port.Number(), port, port.Number(), reflect.TypeOf(port.Underlying()))
+		log.Printf("%#v\n", port)
+	}
+	log.Println("---")
+	for _, port := range midi.GetOutPorts() {
+		log.Printf("%#v\n", port)
+		//log.Println(port.Number(), port, port.Number(), reflect.TypeOf(port.Underlying()))
+	}
+
 	inPort := flag.String("input", "LPK25 mk2 MIDI 1", "MIDI input port name")
 	outPort := flag.String("output", "Synth input port", "MIDI output port name")
 
 	flag.Parse()
-	defer midi.CloseDriver()
-	drv := drivers.Get().(*rtmididrv.Driver)
 	in, err := midi.FindInPort(*inPort)
+	he(err)
+	out, err := midi.FindOutPort(*outPort)
+	he(err)
+
+	mainCtx, mainCancel := context.WithCancel(context.Background())
+
+	uiCtx, cancelUi := context.WithCancel(mainCtx)
+	go ui(uiCtx, cancelUi)
+
+	loopCtx, cancelLoop := context.WithCancel(mainCtx)
+	go loop(loopCtx, cancelLoop, in, out)
+
+	signalCh := make(chan os.Signal, 1)
+	signal.Notify(signalCh, os.Interrupt)
+
+	MasterControl = make(chan Message, 10)
+masterLoop:
+	for {
+		select {
+		case <-signalCh:
+			println("\ninterrupt")
+			MasterControl <- Message{ev: Quit}
+		case m := <-MasterControl:
+			switch m.ev {
+			case Quit:
+				log.Println("main quit")
+				mainCancel()
+				break masterLoop
+			}
+		case <-uiCtx.Done():
+			// UI closed, on relance
+			uiCtx, cancelUi = context.WithCancel(mainCtx)
+			//time.Sleep(time.Second)
+			log.Println("mc: restart UI")
+			go ui(uiCtx, cancelUi)
+		case <-loopCtx.Done():
+			loopCtx, cancelLoop = context.WithCancel(mainCtx)
+			log.Println("mc: restart Loop")
+
+			go loop(loopCtx, cancelLoop, in, out)
+		}
+	}
+
+	he(drv.Close())
+	midi.CloseDriver()
+}
+
+/*
+in, err := midi.InPort(inN)
+
 	if err != nil {
 		fmt.Println("can't find input, opening one")
 		in, err = drv.OpenVirtualIn("step-recorder")
 		he(err)
 	}
-	println("input:", in.String())
 
-	out, err := midi.FindOutPort(*outPort)
+out, err := midi.OutPort(outN)
+
 	if err != nil {
 		fmt.Println("can't find output")
 		out, err = drv.OpenVirtualOut("step-recorder")
 		he(err)
 	}
-	println("output:", out.String())
+
+he(in.Open())
+he(out.Open())
+*/
+var drv *rtmididrv.Driver = drivers.Get().(*rtmididrv.Driver)
+
+func loop(ctx context.Context, cancel func(), in drivers.In, out drivers.Out) {
 
 	s := smf.New()
-
-	go ui()
 
 	send, err := midi.SendTo(out)
 	he(err)
@@ -108,43 +170,39 @@ func main() {
 				stepIndex = 0
 			} else {
 				if vel == 127 {
-					BusFromUItoLoop <- Message{ev: Record}
+					SinkUI <- Message{ev: Record}
 				}
 			}
 		}
 	})
 	he(err)
-	quit := make(chan struct{}, 1)
 
-	go func() {
-		signalCh := make(chan os.Signal, 1)
-		signal.Notify(signalCh, os.Interrupt)
-		<-signalCh
-		println("interrupt")
-		BusFromUItoLoop <- Message{ev: Quit}
-	}()
-	go func() {
-		for {
-			msg := <-BusFromUItoLoop
+loopchan:
+	for {
+		select {
+		case <-ctx.Done():
+			log.Println("loop: context Done")
+			break loopchan
+		case msg := <-SinkUI:
 			switch msg.ev {
 			case Record:
 				println("loop: record SYN")
 				if shoudStartRecording && !isRecording {
 					shoudStartRecording = false
-					BusFromLoopToUI <- Message{ev: Record, boolean: false}
+					SinkLoop <- Message{ev: Record, boolean: false}
 					log.Println("cancel recording")
 					continue
 				}
 				// time.Sleep(time.Second)
 				if isRecording { // STOP RECORD
 					isRecording = false
-					BusFromLoopToUI <- Message{ev: Record, boolean: false}
+					SinkLoop <- Message{ev: Record, boolean: false}
 					log.Println("stop recording")
 					main.Close(0)
 				} else { //START RECORD
 					shoudStartRecording = true
 					isRecording = false
-					BusFromLoopToUI <- Message{ev: Record, boolean: true}
+					SinkLoop <- Message{ev: Record, boolean: true}
 					log.Println("start recording")
 				}
 			case PlayPause:
@@ -157,13 +215,9 @@ func main() {
 					he(err)
 					player := smf.ReadTracksFrom(&bf)
 					he(player.Play(out))
-					BusFromLoopToUI <- Message{ev: PlayPause}
+					SinkLoop <- Message{ev: PlayPause}
 					log.Println("end play")
 				}()
-			case Quit:
-				log.Println("quit")
-				stop()
-				quit <- struct{}{}
 			case Quantize:
 				go func() {
 					log.Printf("quantize at %d BPM\n", msg.number)
@@ -174,14 +228,14 @@ func main() {
 					_, err = tmpFile.WriteTo(&bf)
 					he(quantizer.Quantize(&bf, &bf))
 					main = smf.ReadTracksFrom(&bf).SMF().Tracks[0]
-					BusFromLoopToUI <- Message{ev: Quantize}
+					SinkLoop <- Message{ev: Quantize}
 					log.Println("quantize done")
 				}()
 			case StepMode:
 				log.Println("set steps mode to", isSteps)
 				isSteps = !isSteps
 				stepIndex = 0
-				BusFromLoopToUI <- Message{ev: StepMode, boolean: isSteps}
+				SinkLoop <- Message{ev: StepMode, boolean: isSteps}
 				if isSteps {
 					stepNotes = trackToSteps(main)
 				}
@@ -190,13 +244,13 @@ func main() {
 				file, err := os.Open(msg.str)
 				if err != nil {
 					log.Println(err)
-					BusFromLoopToUI <- Message{ev: Error, str: err.Error()}
+					SinkLoop <- Message{ev: Error, str: err.Error()}
 					continue
 				}
 				midiFile := smf.ReadTracksFrom(file).SMF()
 				if midiFile == nil || midiFile.NumTracks() < 1 {
 					log.Println("empty MIDI file")
-					BusFromLoopToUI <- Message{ev: Error, str: "pas un fichier MIDI"}
+					SinkLoop <- Message{ev: Error, str: "pas un fichier MIDI"}
 					continue
 				}
 				main = midiFile.Tracks[0]
@@ -218,29 +272,14 @@ func main() {
 
 			}
 		}
-	}()
-	<-quit
-
-	/*
-		main.SendTo(TICKS, smf.TempoChanges{},
-			func(m midi.Message, timestampms int32) {
-				he(send(m))
-				deltams := timestampms - absmillisec
-				absmillisec = timestampms
-				// time.Sleep(TICKS.Duration(BPM, uint32(deltams)) / time.Millisecond)
-				// println(deltams)
-				println(timestampms)
-				_ = deltams
-				//t := time.Duration((deltams * int32(time.Millisecond)) / 2)
-				//time.Sleep(t)
-			})
-	*/
-
+	}
+	log.Println("loop: quit")
+	stop()
 }
 
 func he(err error) {
 	if err != nil {
-		panic(err)
+		log.Fatal("fatale, ", err.Error())
 	}
 }
 
