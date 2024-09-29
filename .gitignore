@@ -1,7 +1,5 @@
 *.mid
-cmd/step-recorder/step-recorder
-cmd/step-recorder/step-recorder
-cmd/usb-piano/usb-piano
+step-recorder
 serial-piano
 snapper
 usb-piano
