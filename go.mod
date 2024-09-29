@@ -6,7 +6,7 @@ toolchain go1.22.7
 
 require (
 	github.com/albenik/go-serial/v2 v2.6.0
-	github.com/gotk3/gotk3 v0.6.2
+	github.com/gotk3/gotk3 v0.6.5-0.20240618185848-ff349ae13f56
 	gitlab.com/gomidi/midi/v2 v2.2.7
 	gitlab.com/gomidi/quantizer v0.0.5
 	gopkg.in/yaml.v3 v3.0.1

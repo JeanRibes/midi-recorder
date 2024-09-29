@@ -2,9 +2,11 @@ package main
 
 import (
 	"context"
+	"fmt"
 	"log"
 	"strconv"
 
+	"github.com/gotk3/gotk3/gdk"
 	"github.com/gotk3/gotk3/glib"
 	"github.com/gotk3/gotk3/gtk"
 )
@@ -15,7 +17,7 @@ func ui(ctx context.Context, cancel func(), inP, outP int, inL []string, inN []i
 	if err != nil {
 		log.Fatal("Unable to create window:", err)
 	}
-	win.SetTitle("Step-Recorder")
+	win.SetTitle("Piano Jean")
 	windestroyhandle := win.Connect("destroy", func() {
 		//cancel()
 		log.Println("ui: close win, sending quit event")
@@ -157,6 +159,65 @@ func ui(ctx context.Context, cancel func(), inP, outP int, inL []string, inN []i
 		}
 	})
 
+	banksBox, _ := gtk.BoxNew(gtk.ORIENTATION_HORIZONTAL, 5)
+	banksBtns := []*gtk.EventBox{}
+
+	for i := 0; i < 5; i++ {
+		bankBtn, _ := gtk.EventBoxNew() //gtk.LabelNew(fmt.Sprintf("bank \n%d", i))
+		_btn, _ := gtk.LabelNew(fmt.Sprintf("bank %d", i))
+		bankBtn.Add(_btn)
+		banksBox.Add(bankBtn)
+		banksBtns = append(banksBtns, bankBtn)
+		bankBtn.SetMarginBottom(10)
+		bankBtn.SetMarginStart(10)
+		bankBtn.SetMarginEnd(10)
+		bankBtn.SetMarginTop(10)
+		/*bankBtn.Connect("drag-begin", func(self *gtk.EventBox, context *gdk.DragContext) {
+			println("drag-begin")
+			//self.GetChild()
+		})
+		bankBtn.Connect("drag-end", func(self *gtk.EventBox, context *gdk.DragContext) {
+			println("drag-end")
+		})
+		bankBtn.Connect("drag-drop", func(self *gtk.EventBox, context *gdk.DragContext, x, y int, time int) {
+			fmt.Printf("drag-drop x=%d,y=%d %s %#v\n", x, y, _btn.GetLabel(), context)
+		})*/
+		bankBtn.Connect("drag-data-get", func(self *gtk.EventBox, ctx *gdk.DragContext, data *gtk.SelectionData, info, time int) {
+			println(_btn.GetLabel(), "SEND drag-data-get", info, time)
+			data.SetText(_btn.GetLabel())
+			//data.SetURIs([]string{"/tmp/test/source.txt"})
+		})
+		bankBtn.Connect("drag-data-received", func(self *gtk.EventBox, ctx *gdk.DragContext, x, y int, data *gtk.SelectionData, m int, t uint) {
+			println(_btn.GetLabel(), "RECV drag-fata-receive", data.GetText())
+			println("DnD:", data.GetText(), "→", _btn.GetLabel())
+		})
+		bankBtn.Connect("drag-data-delete", func(self *gtk.EventBox, ctx *gdk.DragContext) {
+			println("drag-fata-delete")
+			println(_btn.GetLabel(), "ACK drag-fata-delete")
+		})
+
+	}
+
+	bankTarget, err := gtk.TargetEntryNew("text/plain", gtk.TARGET_OTHER_WIDGET, 0)
+	targetsList := []gtk.TargetEntry{
+		*bankTarget,
+		//targ(gtk.TargetEntryNew("audio/midi", gtk.TARGET_OTHER_APP, 0)),
+		targ(gtk.TargetEntryNew("audio/midi", gtk.TARGET_OTHER_APP, 0)),
+		targ(gtk.TargetEntryNew("text/plain", gtk.TARGET_OTHER_APP, 0)),
+	}
+	he(err)
+
+	ACTION := gdk.ACTION_COPY //gdk.ACTION_COPY
+	for i := 0; i < 5; i++ {
+		banksBtns[i].DragSourceSet(gdk.BUTTON1_MASK|gdk.BUTTON2_MASK, targetsList, ACTION)
+		banksBtns[i].DragDestSet(gtk.DEST_DEFAULT_ALL, targetsList, ACTION)
+	}
+
+	loadFileBtn2, _ := gtk.FileChooserButtonNew("ouvrir", gtk.FILE_CHOOSER_ACTION_OPEN) //comme en HTML
+	loadFileBtn2.SetName("hey")
+	loadFileBtn2.GetFilename()
+	//banksBox.DragDestSet(gtk.DEST_DEFAULT_ALL, targetsList, gdk.ACTION_COPY)
+
 	mainBox.Add(reloadBtn)
 
 	mainBox.Add(comboInPorts)
@@ -167,7 +228,9 @@ func ui(ctx context.Context, cancel func(), inP, outP int, inL []string, inN []i
 	mainBox.Add(quantizeBox)
 	mainBox.Add(playBtn)
 	mainBox.Add(stepBtn)
+	mainBox.Add(banksBox)
 	mainBox.Add(loadFileBtn)
+	//mainBox.Add(loadFileBtn2)
 	mainBox.Add(saveFileBtn)
 
 	win.Add(mainBox)
