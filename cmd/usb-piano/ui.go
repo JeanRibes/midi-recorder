@@ -30,13 +30,13 @@ func ui(ctx context.Context, cancel func(), inP, outP int, inL []string, inN []i
 	recordBtn.SetLabel("Record")
 	recordBtn.Connect("clicked", func() {
 		recordBtn.SetSensitive(false)
-		SinkUI <- Message{ev: Record}
+		SinkLoop <- Message{ev: Record}
 	})
 
 	playBtn, _ := gtk.ButtonNewWithLabel("Play")
 	playBtn.Connect("clicked", func() {
 		playBtn.SetSensitive(false)
-		SinkUI <- Message{ev: PlayPause}
+		SinkLoop <- Message{ev: PlayPause}
 	})
 
 	quantizeBox, _ := gtk.BoxNew(gtk.ORIENTATION_HORIZONTAL, 10)
@@ -50,7 +50,7 @@ func ui(ctx context.Context, cancel func(), inP, outP int, inL []string, inN []i
 		if err == nil {
 			var i int64
 			if i, err = strconv.ParseInt(txt, 10, 32); err == nil {
-				SinkUI <- Message{ev: Quantize, number: int(i)}
+				SinkLoop <- Message{ev: Quantize, number: int(i)}
 			} else {
 				println(err.Error())
 				quantizeBtn.SetSensitive(true)
@@ -65,7 +65,7 @@ func ui(ctx context.Context, cancel func(), inP, outP int, inL []string, inN []i
 
 	stepBtn, _ := gtk.ButtonNewWithLabel("Activer Mode steps")
 	stepBtn.Connect("clicked", func() {
-		SinkUI <- Message{ev: StepMode}
+		SinkLoop <- Message{ev: StepMode}
 	})
 
 	loadFileBtn, _ := gtk.ButtonNewWithLabel("Charger depuis fichier")
@@ -81,7 +81,7 @@ func ui(ctx context.Context, cancel func(), inP, outP int, inL []string, inN []i
 		d.SetKeepBelow(true)
 		response := d.Run()
 		if response == gtk.RESPONSE_ACCEPT {
-			SinkUI <- Message{ev: LoadFromFile, str: d.GetFilename()}
+			SinkLoop <- Message{ev: LoadFromFile, str: d.GetFilename()}
 		}
 		d.Destroy()
 	})
@@ -94,7 +94,7 @@ func ui(ctx context.Context, cancel func(), inP, outP int, inL []string, inN []i
 		response := d.Run()
 		println(response)
 		if response == gtk.RESPONSE_ACCEPT {
-			SinkUI <- Message{ev: SaveToFile, str: d.GetFilename()}
+			SinkLoop <- Message{ev: SaveToFile, str: d.GetFilename()}
 		}
 		d.Destroy()
 	})
@@ -160,18 +160,33 @@ func ui(ctx context.Context, cancel func(), inP, outP int, inL []string, inN []i
 	})
 
 	banksBox, _ := gtk.BoxNew(gtk.ORIENTATION_HORIZONTAL, 5)
-	banksBtns := []*gtk.EventBox{}
-
+	targetsList := []gtk.TargetEntry{
+		targ(gtk.TargetEntryNew("text/plain", gtk.TARGET_OTHER_WIDGET, 0)),
+		//targ(gtk.TargetEntryNew("audio/midi", gtk.TARGET_OTHER_APP, 0)),
+		targ(gtk.TargetEntryNew("audio/midi", gtk.TARGET_OTHER_APP, 0)),
+		targ(gtk.TargetEntryNew("text/plain", gtk.TARGET_OTHER_APP, 0)),
+	}
 	for i := 0; i < 5; i++ {
 		bankBtn, _ := gtk.EventBoxNew() //gtk.LabelNew(fmt.Sprintf("bank \n%d", i))
 		_btn, _ := gtk.LabelNew(fmt.Sprintf("bank %d", i))
-		bankBtn.Add(_btn)
+		playBankCb, _ := gtk.CheckButtonNewWithLabel("play")
+		playBankCb.Connect("toggled", func() {
+			SinkLoop <- Message{ev: BankStateChange, boolean: playBankCb.GetActive(), number: i}
+		})
+		vbox, _ := gtk.BoxNew(gtk.ORIENTATION_VERTICAL, 5)
+		vbox.Add(_btn)
+		vbox.Add(playBankCb)
+		bankBtn.Add(vbox)
+
 		banksBox.Add(bankBtn)
-		banksBtns = append(banksBtns, bankBtn)
 		bankBtn.SetMarginBottom(10)
 		bankBtn.SetMarginStart(10)
 		bankBtn.SetMarginEnd(10)
 		bankBtn.SetMarginTop(10)
+
+		ACTION := gdk.ACTION_COPY
+		bankBtn.DragSourceSet(gdk.BUTTON1_MASK|gdk.BUTTON2_MASK, targetsList, ACTION)
+		bankBtn.DragDestSet(gtk.DEST_DEFAULT_ALL, targetsList, ACTION)
 		/*bankBtn.Connect("drag-begin", func(self *gtk.EventBox, context *gdk.DragContext) {
 			println("drag-begin")
 			//self.GetChild()
@@ -198,25 +213,12 @@ func ui(ctx context.Context, cancel func(), inP, outP int, inL []string, inN []i
 
 	}
 
-	bankTarget, err := gtk.TargetEntryNew("text/plain", gtk.TARGET_OTHER_WIDGET, 0)
-	targetsList := []gtk.TargetEntry{
-		*bankTarget,
-		//targ(gtk.TargetEntryNew("audio/midi", gtk.TARGET_OTHER_APP, 0)),
-		targ(gtk.TargetEntryNew("audio/midi", gtk.TARGET_OTHER_APP, 0)),
-		targ(gtk.TargetEntryNew("text/plain", gtk.TARGET_OTHER_APP, 0)),
-	}
-	he(err)
-
-	ACTION := gdk.ACTION_COPY //gdk.ACTION_COPY
-	for i := 0; i < 5; i++ {
-		banksBtns[i].DragSourceSet(gdk.BUTTON1_MASK|gdk.BUTTON2_MASK, targetsList, ACTION)
-		banksBtns[i].DragDestSet(gtk.DEST_DEFAULT_ALL, targetsList, ACTION)
-	}
-
-	loadFileBtn2, _ := gtk.FileChooserButtonNew("ouvrir", gtk.FILE_CHOOSER_ACTION_OPEN) //comme en HTML
-	loadFileBtn2.SetName("hey")
-	loadFileBtn2.GetFilename()
-	//banksBox.DragDestSet(gtk.DEST_DEFAULT_ALL, targetsList, gdk.ACTION_COPY)
+	/*loadFileBtn2, _ := gtk.FileChooserButtonNew("ouvrir", gtk.FILE_CHOOSER_ACTION_OPEN) //comme en HTML
+	loadFileBtn2.Connect("file-set", func() {
+		println(loadFileBtn2.GetFilename())
+	})
+	loadFileBtn2.DragDestSet(gtk.DEST_DEFAULT_ALL, targetsList, gdk.ACTION_COPY)
+	mainBox.Add(loadFileBtn2)*/
 
 	mainBox.Add(reloadBtn)
 
@@ -230,7 +232,6 @@ func ui(ctx context.Context, cancel func(), inP, outP int, inL []string, inN []i
 	mainBox.Add(stepBtn)
 	mainBox.Add(banksBox)
 	mainBox.Add(loadFileBtn)
-	//mainBox.Add(loadFileBtn2)
 	mainBox.Add(saveFileBtn)
 
 	win.Add(mainBox)
@@ -243,7 +244,7 @@ func ui(ctx context.Context, cancel func(), inP, outP int, inL []string, inN []i
 				log.Println("ui: chan Done, quitting")
 				gtk.MainQuit()
 				return
-			case msg := <-SinkLoop:
+			case msg := <-SinkUI:
 				switch msg.ev {
 				case Record:
 					if msg.boolean {

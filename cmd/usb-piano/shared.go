@@ -12,6 +12,7 @@ const (
 	SaveToFile
 	Error
 	RestartMIDI
+	BankStateChange
 )
 
 type Message struct {
@@ -22,11 +23,11 @@ type Message struct {
 	port2   int
 }
 
-var SinkUI chan Message
 var SinkLoop chan Message
+var SinkUI chan Message
 var MasterControl chan Message
 
 func init() {
-	SinkUI = make(chan Message, 10)
 	SinkLoop = make(chan Message, 10)
+	SinkUI = make(chan Message, 10)
 }

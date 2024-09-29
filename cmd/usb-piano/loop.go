@@ -80,7 +80,7 @@ func loop(ctx context.Context, cancel func(), in drivers.In, out drivers.Out) {
 				stepIndex = 0
 			} else {
 				if vel == 127 {
-					SinkUI <- Message{ev: Record}
+					SinkLoop <- Message{ev: Record}
 				}
 			}
 		}
@@ -93,26 +93,26 @@ loopchan:
 		case <-ctx.Done():
 			log.Println("loop: context Done")
 			break loopchan
-		case msg := <-SinkUI:
+		case msg := <-SinkLoop:
 			switch msg.ev {
 			case Record:
 				println("loop: record SYN")
 				if shoudStartRecording && !isRecording {
 					shoudStartRecording = false
-					SinkLoop <- Message{ev: Record, boolean: false}
+					SinkUI <- Message{ev: Record, boolean: false}
 					log.Println("cancel recording")
 					continue
 				}
 				// time.Sleep(time.Second)
 				if isRecording { // STOP RECORD
 					isRecording = false
-					SinkLoop <- Message{ev: Record, boolean: false}
+					SinkUI <- Message{ev: Record, boolean: false}
 					log.Println("stop recording")
 					main.Close(0)
 				} else { //START RECORD
 					shoudStartRecording = true
 					isRecording = false
-					SinkLoop <- Message{ev: Record, boolean: true}
+					SinkUI <- Message{ev: Record, boolean: true}
 					log.Println("start recording")
 				}
 			case PlayPause:
@@ -125,7 +125,7 @@ loopchan:
 					he(err)
 					player := smf.ReadTracksFrom(&bf)
 					he(player.Play(out))
-					SinkLoop <- Message{ev: PlayPause}
+					SinkUI <- Message{ev: PlayPause}
 					log.Println("end play")
 				}()
 			case Quantize:
@@ -138,14 +138,14 @@ loopchan:
 					_, err = tmpFile.WriteTo(&bf)
 					he(quantizer.Quantize(&bf, &bf))
 					main = smf.ReadTracksFrom(&bf).SMF().Tracks[0]
-					SinkLoop <- Message{ev: Quantize}
+					SinkUI <- Message{ev: Quantize}
 					log.Println("quantize done")
 				}()
 			case StepMode:
 				log.Println("set steps mode to", isSteps)
 				isSteps = !isSteps
 				stepIndex = 0
-				SinkLoop <- Message{ev: StepMode, boolean: isSteps}
+				SinkUI <- Message{ev: StepMode, boolean: isSteps}
 				if isSteps {
 					stepNotes = trackToSteps(main)
 				}
@@ -154,13 +154,13 @@ loopchan:
 				file, err := os.Open(msg.str)
 				if err != nil {
 					log.Println(err)
-					SinkLoop <- Message{ev: Error, str: err.Error()}
+					SinkUI <- Message{ev: Error, str: err.Error()}
 					continue
 				}
 				midiFile := smf.ReadTracksFrom(file).SMF()
 				if midiFile == nil || midiFile.NumTracks() < 1 {
 					log.Println("empty MIDI file")
-					SinkLoop <- Message{ev: Error, str: "pas un fichier MIDI"}
+					SinkUI <- Message{ev: Error, str: "pas un fichier MIDI"}
 					continue
 				}
 				main = midiFile.Tracks[0]
@@ -179,6 +179,8 @@ loopchan:
 				if err := midiFile.WriteFile(fileName); err != nil {
 					log.Println(err.Error())
 				}
+			case BankStateChange:
+				log.Printf("set bank %d to state %t\n", msg.number, msg.boolean)
 
 			}
 		}
