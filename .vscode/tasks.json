@@ -4,19 +4,10 @@
         {
             "label": "Build and run",
             "type": "shell",
-            "command": "go build midi/cmd/serial-piano midi/cmd/step-recorder midi/cmd/usb-piano",
-            "group": {
-                "kind": "build",
-                "isDefault": true
-            }
-        },
-        {
-            "label": "Run usb-piano",
-            "type": "shell",
             "command": "go run midi/cmd/usb-piano",
             "group": {
                 "kind": "build",
-                "isDefault": false
+                "isDefault": true
             }
         }
 

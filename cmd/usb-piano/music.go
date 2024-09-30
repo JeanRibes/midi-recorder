@@ -19,17 +19,20 @@ type RecEvent struct {
 
 type RecTrack []RecEvent
 
+const DONT_SKIP_NOTES = true
+
 func convert(tr smf.Track) RecTrack {
 	rt := RecTrack{}
 	/*
 		noteOn(A) , noteOff(A) → OK
 		noteOn(A), noteOff(B) → nope
+		noteOn(A), noteOn(B) → on coupe A & on démarre B
 	*/
 	//synthTable := map[midi.Note]bool{}
 	var ch, key, vel uint8
 	prevOn := false     // previous message is noteOn
 	prevKey := uint8(0) // previous NoteON
-	prevVel := uint8(0)
+	prevVel := uint8(127)
 	var on bool
 	absTime := uint32(0)
 	onAt := uint32(0)
@@ -37,6 +40,20 @@ func convert(tr smf.Track) RecTrack {
 		absTime += ev.Delta
 		ev.Message.GetNoteOff(&ch, &key, &vel)
 		on = ev.Message.GetNoteOn(&ch, &key, &vel)
+
+		if DONT_SKIP_NOTES && on && prevOn { // commenter pour sauter les notes
+			println(midi.Note(prevKey).String(), "→", midi.Note(key).String())
+			rt = append(rt, RecEvent{
+				note:         midi.Note(prevKey),
+				delta:        onAt,
+				duration:     absTime - onAt,
+				silenceAfter: 1000,
+				vel:          prevVel,
+			})
+			prevKey = key
+			onAt = absTime
+			continue
+		}
 		if !on && prevOn && prevKey == key {
 			rt = append(rt, RecEvent{
 				note:     midi.Note(key),
@@ -53,27 +70,7 @@ func convert(tr smf.Track) RecTrack {
 			prevVel = vel
 			prevKey = key
 		}
-		/*if on && prevOn { // empêche deux noteOn
-			continue
-		}
-		if !on && key != prevKey { // empêche d'éteindre une autre note
-			continue // que la précédente
-		}
-		prevOn = on
-		prevKey = key
-		if on {
-			onAt = absTime
-			prevVel = vel
-		} else {
-			rt = append(rt, RecEvent{
-				note:     midi.Note(key),
-				delta:    onAt,
-				duration: onAt - absTime,
-				vel:      prevVel,
-			})
-		}*/
 	}
-	println(len(rt))
 	absTime = 0
 	prevOn = true
 	for i, ev := range rt[1:] {
@@ -93,10 +90,12 @@ func playRTrack(ctx context.Context, recordTrack RecTrack, ticks smf.MetricTicks
 		case <-ctx.Done():
 			return nil
 		default:
-			absms += ev.delta
+			absms += ev.duration
 			logger.Debug("note  on", "key", ev.note, "delta", ev.delta, "duration", ev.duration, "abs", absms)
 			send(midi.NoteOn(0, uint8(ev.note), ev.vel))
 			time.Sleep(ticks.Duration(BPM, ev.duration))
+
+			absms += ev.silenceAfter
 			logger.Debug("note off", "key", ev.note, "delta", ev.delta, "silence", ev.silenceAfter, "abs", absms)
 			send(midi.NoteOff(0, uint8(ev.note)))
 			time.Sleep(ticks.Duration(BPM, ev.silenceAfter))

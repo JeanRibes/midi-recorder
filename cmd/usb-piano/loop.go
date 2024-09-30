@@ -260,7 +260,7 @@ loopchan:
 	logger.Info("stop")
 	if out.IsOpen() {
 		stop()
-		he(out.Close())
+		//he(out.Close())
 	} else {
 		println("already closed")
 	}
