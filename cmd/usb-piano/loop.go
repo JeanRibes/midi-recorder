@@ -8,6 +8,8 @@ import (
 	"strings"
 	"time"
 
+	charmlog "github.com/charmbracelet/log"
+
 	"gitlab.com/gomidi/midi/v2"
 	"gitlab.com/gomidi/midi/v2/drivers"
 	"gitlab.com/gomidi/midi/v2/smf"
@@ -15,16 +17,35 @@ import (
 )
 
 func loop(ctx context.Context, cancel func(), in drivers.In, out drivers.Out) {
-
-	s := smf.New()
+	LoopDied = false
+	logger := charmlog.NewWithOptions(os.Stdout, charmlog.Options{
+		Level: charmlog.DebugLevel,
+		//ReportCaller:    true,
+		ReportTimestamp: false,
+		Prefix:          "loop",
+	})
+	logger.Info("start")
 
 	send, err := midi.SendTo(out)
-	he(err)
+	if err != nil {
+		logger.Error(err)
+		SinkUI <- Message{ev: Error, str: "impossible d'ouvrir ce port MIDI en sortie"}
+		cancel()
+		return
+	}
 	he(send(midi.ControlChange(0, 64, 127))) //sustain
 	/*send(midi.NoteOn(0, 70, 80))
 	time.Sleep(100 * time.Millisecond)
 	he(send(midi.NoteOff(0, 70)))*/
+	if in == nil {
+		logger.Error("input port is nil")
+		SinkUI <- Message{ev: Error, str: "impossible d'ouvrir ce port MIDI en entrée"}
+		cancel()
+		return
+	}
+	logger.Debug("input port", "open", in.IsOpen())
 
+	s := smf.New()
 	main := smf.Track{}
 	main.Add(0, smf.MetaTempo(BPM))
 
@@ -85,48 +106,57 @@ func loop(ctx context.Context, cancel func(), in drivers.In, out drivers.Out) {
 			}
 		}
 	})
-	he(err)
+	if err != nil {
+		logger.Error(err)
+		SinkUI <- Message{ev: Error, str: "impossible d'écouter ce port MIDI"}
+		cancel()
+		return
+	}
 
+	LoopDied = true
 loopchan:
 	for {
 		select {
 		case <-ctx.Done():
-			log.Println("loop: context Done")
+			logger.Debug("context Done")
 			break loopchan
 		case msg := <-SinkLoop:
 			switch msg.ev {
 			case Record:
-				println("loop: record SYN")
+				logger.Debug("record SYN")
 				if shoudStartRecording && !isRecording {
 					shoudStartRecording = false
 					SinkUI <- Message{ev: Record, boolean: false}
-					log.Println("cancel recording")
+					logger.Debug("cancel recording")
 					continue
 				}
 				// time.Sleep(time.Second)
 				if isRecording { // STOP RECORD
 					isRecording = false
 					SinkUI <- Message{ev: Record, boolean: false}
-					log.Println("stop recording")
+					logger.Debug("stop recording")
 					main.Close(0)
 				} else { //START RECORD
 					shoudStartRecording = true
 					isRecording = false
 					SinkUI <- Message{ev: Record, boolean: true}
-					log.Println("start recording")
+					logger.Debug("start recording")
 				}
 			case PlayPause:
 				go func() {
-					log.Println("start play")
+					logger.Debug("start play")
 					var bf bytes.Buffer
 					tmpFile := smf.New()
 					tmpFile.Add(main)
 					_, err = tmpFile.WriteTo(&bf)
-					he(err)
+					if err != nil {
+						logger.Error(err)
+						return
+					}
 					player := smf.ReadTracksFrom(&bf)
 					he(player.Play(out))
 					SinkUI <- Message{ev: PlayPause}
-					log.Println("end play")
+					logger.Debug("end play")
 				}()
 			case Quantize:
 				go func() {
@@ -136,13 +166,17 @@ loopchan:
 					main[0].Message = smf.MetaTempo(float64(msg.number))
 					tmpFile.Add(main)
 					_, err = tmpFile.WriteTo(&bf)
+					if err != nil {
+						logger.Error(err)
+						return
+					}
 					he(quantizer.Quantize(&bf, &bf))
 					main = smf.ReadTracksFrom(&bf).SMF().Tracks[0]
 					SinkUI <- Message{ev: Quantize}
-					log.Println("quantize done")
+					logger.Debug("quantize done")
 				}()
 			case StepMode:
-				log.Println("set steps mode to", isSteps)
+				logger.Debug("set steps mode to", isSteps)
 				isSteps = !isSteps
 				stepIndex = 0
 				SinkUI <- Message{ev: StepMode, boolean: isSteps}
@@ -150,16 +184,16 @@ loopchan:
 					stepNotes = trackToSteps(main)
 				}
 			case LoadFromFile:
-				log.Println("loading file", msg.str)
+				logger.Debug("loading file", msg.str)
 				file, err := os.Open(msg.str)
 				if err != nil {
-					log.Println(err)
+					logger.Error(err)
 					SinkUI <- Message{ev: Error, str: err.Error()}
 					continue
 				}
 				midiFile := smf.ReadTracksFrom(file).SMF()
 				if midiFile == nil || midiFile.NumTracks() < 1 {
-					log.Println("empty MIDI file")
+					logger.Error("empty MIDI file")
 					SinkUI <- Message{ev: Error, str: "pas un fichier MIDI"}
 					continue
 				}
@@ -169,22 +203,27 @@ loopchan:
 				if !strings.HasSuffix(fileName, ".mid") {
 					fileName += ".mid"
 				}
-				log.Println("saving to", fileName)
+				logger.Info("saving to", "filename", fileName)
 				midiFile := smf.New()
 				main.Close(0)
 				if err := midiFile.Add(main); err != nil {
-					log.Println(err)
+					logger.Error(err)
 					continue
 				}
 				if err := midiFile.WriteFile(fileName); err != nil {
-					log.Println(err.Error())
+					logger.Error(err)
 				}
 			case BankStateChange:
-				log.Printf("set bank %d to state %t\n", msg.number, msg.boolean)
+				logger.Printf("set bank %d to state %t\n", msg.number, msg.boolean)
 
 			}
 		}
 	}
-	log.Println("loop: quit")
-	stop()
+	logger.Info("stop")
+	if out.IsOpen() {
+		stop()
+		he(out.Close())
+	} else {
+		println("already closed")
+	}
 }

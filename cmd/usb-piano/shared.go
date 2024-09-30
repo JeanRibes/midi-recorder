@@ -31,3 +31,5 @@ func init() {
 	SinkLoop = make(chan Message, 10)
 	SinkUI = make(chan Message, 10)
 }
+
+var LoopDied bool = false

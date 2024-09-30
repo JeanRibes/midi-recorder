@@ -3,11 +3,11 @@ package main
 import (
 	"context"
 	"flag"
-	"fmt"
-	"log"
 	"os"
 	"os/signal"
+	"time"
 
+	charmlog "github.com/charmbracelet/log"
 	"gitlab.com/gomidi/midi/v2"
 	"gitlab.com/gomidi/midi/v2/drivers"
 	rtmididrv "gitlab.com/gomidi/midi/v2/drivers/rtmididrv"
@@ -16,14 +16,19 @@ import (
 var BPM = float64(120)
 
 func main() {
+	logger := charmlog.NewWithOptions(os.Stdout, charmlog.Options{
+		Level: charmlog.DebugLevel,
+		//ReportCaller:    true,
+		ReportTimestamp: false,
+		Prefix:          "main",
+	})
+	logger.Info("start")
 	for _, port := range midi.GetInPorts() {
-		//log.Println(port.Number(), port, port.Number(), reflect.TypeOf(port.Underlying()))
-		log.Printf("%#v\n", port)
+		logger.Debug("input port", "number", port.Number(), "name", port.String())
 	}
-	log.Println("---")
 	for _, port := range midi.GetOutPorts() {
-		log.Printf("%#v\n", port)
-		//log.Println(port.Number(), port, port.Number(), reflect.TypeOf(port.Underlying()))
+		//log.Printf("%#v\n", port)
+		logger.Debug("output port", "number", port.Number(), "name", port.String())
 	}
 
 	inPort := flag.String("input", "LPK25 mk2 MIDI 1", "MIDI input port name")
@@ -33,14 +38,14 @@ func main() {
 
 	in, err := midi.FindInPort(*inPort)
 	if err != nil {
-		fmt.Println("can't find input, opening one")
+		logger.Warn("can't find input, opening one")
 		in, err = drv.OpenVirtualIn("step-recorder")
 		he(err)
 	}
 
 	out, err := midi.FindOutPort(*outPort)
 	if err != nil {
-		fmt.Println("can't find output")
+		logger.Warn("can't find output, opening one")
 		out, err = drv.OpenVirtualOut("step-recorder")
 		he(err)
 	}
@@ -65,31 +70,37 @@ masterLoop:
 	for {
 		select {
 		case <-signalCh:
-			println("\ninterrupt")
+			logger.Debug("\ninterrupt")
 			MasterControl <- Message{ev: Quit}
 		case m := <-MasterControl:
 			switch m.ev {
 			case Quit:
-				log.Println("main quit")
+				logger.Info("shutting down")
 				mainCancel()
 				break masterLoop
 			case RestartMIDI:
 				inN := m.number
 				outN := m.port2
-				log.Printf("reconnect %d %d\n", inN, outN)
+				logger.Info("reconnect", "input", inN, "output", outN)
+				cancelLoop()
+				for {
+					if !out.IsOpen() {
+						break
+					}
+					time.Sleep(time.Millisecond) //race condition
+				}
 				in, err = midi.InPort(inN)
 				if err != nil {
-					log.Println(err)
+					logger.Error(err)
 					continue
 				}
 				out, err = midi.OutPort(outN)
 				if err != nil {
-					log.Println(err)
+					logger.Error(err)
 					continue
 				}
-				log.Println("reconnect input:", in.String())
-				log.Println("reconnect output:", out.String())
-				cancelLoop()
+				logger.Info("reconnect", "input", in.String())
+				logger.Info("reconnect", "output", out.String())
 				he(drv.Close())
 				midi.CloseDriver()
 
@@ -98,14 +109,21 @@ masterLoop:
 			// UI closed, on relance
 			uiCtx, cancelUi = context.WithCancel(mainCtx)
 			//time.Sleep(time.Second)
-			log.Println("mc: restart UI")
-			inL, inN, outL, outN := listPorts()
-			go ui(uiCtx, cancelUi, in.Number(), out.Number(), inL, inN, outL, outN)
+			logger.Info("mc: restart UI")
+			inPortsNames, inPortsNumbers, outPortsNames, outPortsNumbers := listPorts()
+			inN := 0
+			outN := 0
+			if in != nil && out != nil {
+				inN = in.Number()
+				outN = out.Number()
+			}
+			go ui(uiCtx, cancelUi, inN, outN, inPortsNames, inPortsNumbers, outPortsNames, outPortsNumbers)
 		case <-loopCtx.Done():
 			loopCtx, cancelLoop = context.WithCancel(mainCtx)
-			log.Println("mc: restart Loop")
-
-			go loop(loopCtx, cancelLoop, in, out)
+			logger.Info("mc: restart Loop")
+			if !LoopDied {
+				go loop(loopCtx, cancelLoop, in, out)
+			}
 		}
 	}
 

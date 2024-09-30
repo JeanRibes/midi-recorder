@@ -3,8 +3,11 @@ package main
 import (
 	"context"
 	"fmt"
-	"log"
+	"os"
 	"strconv"
+
+	"github.com/charmbracelet/log"
+	charmlog "github.com/charmbracelet/log"
 
 	"github.com/gotk3/gotk3/gdk"
 	"github.com/gotk3/gotk3/glib"
@@ -12,15 +15,22 @@ import (
 )
 
 func ui(ctx context.Context, cancel func(), inP, outP int, inL []string, inN []int, outL []string, outN []int) {
+	logger := charmlog.NewWithOptions(os.Stdout, charmlog.Options{
+		Level: charmlog.DebugLevel,
+		//ReportCaller:    true,
+		ReportTimestamp: false,
+		Prefix:          "UI",
+	})
+	logger.Info("start")
 	gtk.Init(nil)
 	win, err := gtk.WindowNew(gtk.WINDOW_TOPLEVEL)
 	if err != nil {
-		log.Fatal("Unable to create window:", err)
+		logger.Error("Unable to create window:", err)
 	}
 	win.SetTitle("Piano Jean")
 	windestroyhandle := win.Connect("destroy", func() {
 		//cancel()
-		log.Println("ui: close win, sending quit event")
+		logger.Debug("close win, sending quit event")
 		MasterControl <- Message{ev: Quit}
 	})
 
@@ -52,11 +62,11 @@ func ui(ctx context.Context, cancel func(), inP, outP int, inL []string, inN []i
 			if i, err = strconv.ParseInt(txt, 10, 32); err == nil {
 				SinkLoop <- Message{ev: Quantize, number: int(i)}
 			} else {
-				println(err.Error())
+				log.Error(err)
 				quantizeBtn.SetSensitive(true)
 			}
 		} else {
-			println(err.Error())
+			log.Error(err)
 			quantizeBtn.SetSensitive(true)
 		}
 	})
@@ -117,7 +127,6 @@ func ui(ctx context.Context, cancel func(), inP, outP int, inL []string, inN []i
 			[]int{0, 1},
 			[]interface{}{inN[i], port},
 		)
-		println(inN[i], port)
 	}
 	listOut, _ := gtk.ListStoreNew(glib.TYPE_INT, glib.TYPE_STRING)
 	for i, port := range outL {
@@ -241,7 +250,7 @@ func ui(ctx context.Context, cancel func(), inP, outP int, inL []string, inN []i
 		for {
 			select {
 			case <-ctx.Done():
-				log.Println("ui: chan Done, quitting")
+				logger.Debug("chan Done, quitting")
 				gtk.MainQuit()
 				return
 			case msg := <-SinkUI:
@@ -286,7 +295,7 @@ func ui(ctx context.Context, cancel func(), inP, outP int, inL []string, inN []i
 		}
 	}()
 	gtk.Main()
-	log.Println("ui: exited")
+	logger.Info("stop")
 	win.HandlerDisconnect(windestroyhandle)
 	win.Destroy()
 
