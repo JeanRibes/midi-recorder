@@ -45,7 +45,6 @@ func ui(ctx context.Context, cancel func(), inP, outP int, inL []string, inN []i
 
 	playBtn, _ := gtk.ButtonNewWithLabel("Play")
 	playBtn.Connect("clicked", func() {
-		playBtn.SetSensitive(false)
 		SinkLoop <- Message{ev: PlayPause}
 	})
 
@@ -268,7 +267,11 @@ func ui(ctx context.Context, cancel func(), inP, outP int, inL []string, inN []i
 						})
 					}
 				case PlayPause:
-					glib.IdleAdd(func() { playBtn.SetSensitive(true) })
+					if msg.boolean {
+						glib.IdleAdd(func() { playBtn.SetLabel("Stop") })
+					} else {
+						glib.IdleAdd(func() { playBtn.SetLabel("Play") })
+					}
 				case Quantize:
 					glib.IdleAdd(func() { quantizeBtn.SetSensitive(true) })
 				case StepMode:

@@ -36,13 +36,6 @@ func main() {
 
 	flag.Parse()
 
-	in, err := midi.FindInPort(*inPort)
-	if err != nil {
-		logger.Warn("can't find input, opening one")
-		in, err = drv.OpenVirtualIn("step-recorder")
-		he(err)
-	}
-
 	out, err := midi.FindOutPort(*outPort)
 	if err != nil {
 		logger.Warn("can't find output, opening one")
@@ -50,8 +43,22 @@ func main() {
 		he(err)
 	}
 
-	he(in.Open())
-	he(out.Open())
+	in, err := midi.FindInPort(*inPort)
+	if err != nil {
+		logger.Warn("can't find input, opening one")
+		in, err = drv.OpenVirtualIn("step-recorder")
+		he(err)
+	}
+
+	TMPFILE := os.Getenv("XDG_RUNTIME_DIR") + "/usb-piano.mid"
+	if tr, err := loadTrack(TMPFILE); err == nil {
+		recordTrack = tr
+	} else {
+		logger.Error(err)
+	}
+
+	//he(in.Open()) // crée une double connexion ! (agression auditive !!!)
+	//he(out.Open())
 
 	mainCtx, mainCancel := context.WithCancel(context.Background())
 
@@ -66,6 +73,7 @@ func main() {
 	signal.Notify(signalCh, os.Interrupt)
 
 	MasterControl = make(chan Message, 10)
+
 masterLoop:
 	for {
 		select {
@@ -127,7 +135,11 @@ masterLoop:
 		}
 	}
 
-	he(drv.Close())
+	if err := saveTrack(recordTrack, TMPFILE); err != nil {
+		logger.Error(err)
+	}
+
+	drv.Close()
 	midi.CloseDriver()
 }
 

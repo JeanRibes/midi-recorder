@@ -9,6 +9,16 @@
                 "kind": "build",
                 "isDefault": true
             }
+        },
+        {
+            "label": "Run usb-piano",
+            "type": "shell",
+            "command": "go run midi/cmd/usb-piano",
+            "group": {
+                "kind": "build",
+                "isDefault": false
+            }
         }
+
     ]
 }

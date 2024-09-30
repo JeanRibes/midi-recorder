@@ -1,5 +1,3 @@
 *.mid
-step-recorder
-serial-piano
-snapper
-usb-piano
+*.exe
+*.run
