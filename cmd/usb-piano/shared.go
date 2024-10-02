@@ -13,6 +13,7 @@ const (
 	Error
 	RestartMIDI
 	BankStateChange
+	BankDragDrop
 )
 
 type Message struct {

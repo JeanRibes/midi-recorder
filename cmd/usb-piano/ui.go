@@ -174,23 +174,76 @@ func ui(ctx context.Context, cancel func(), inP, outP int, inL []string, inN []i
 		targ(gtk.TargetEntryNew("audio/midi", gtk.TARGET_OTHER_APP, 0)),
 		targ(gtk.TargetEntryNew("text/plain", gtk.TARGET_OTHER_APP, 0)),
 	}
-	for i := 0; i < 5; i++ {
+	bankCbs := []*gtk.CheckButton{}
+	middleClickInvertCbs := func() {
+		for _, cb := range bankCbs {
+			//cb.Toggled()
+			cb.SetActive(!cb.GetActive())
+		}
+	}
+	rightClickOnlyMe := func(rightClicked int) {
+		for i, cb := range bankCbs {
+			if i != rightClicked {
+				cb.SetActive(false)
+			}
+		}
+		bankCbs[rightClicked].SetActive(true)
+	}
+
+	for i := 0; i < NUM_BANKS; i++ {
 		bankBtn, _ := gtk.EventBoxNew() //gtk.LabelNew(fmt.Sprintf("bank \n%d", i))
 		_btn, _ := gtk.LabelNew(fmt.Sprintf("bank %d", i))
+
 		playBankCb, _ := gtk.CheckButtonNewWithLabel("play")
 		playBankCb.Connect("toggled", func() {
 			SinkLoop <- Message{ev: BankStateChange, boolean: playBankCb.GetActive(), number: i}
 		})
+
+		bankCbs = append(bankCbs, playBankCb)
+		playBankCb.SetEvents(int(gdk.BUTTON_PRESS_MASK))
+		playBankCb.Connect("button-release-event", func(self *gtk.CheckButton, event *gdk.Event) bool {
+			gdk.EventButtonNewFromEvent(event).Type()
+			//evb := event.(interface{}).(*gdk.EventButton)
+			//var be *gdk.EventButton
+			//be = event.Native()
+			bevent := gdk.EventButtonNewFromEvent(event)
+			println("hey", bevent.Button())
+			switch bevent.Button() {
+			case gdk.BUTTON_SECONDARY:
+				if self.GetActive() {
+					middleClickInvertCbs()
+				} else {
+					rightClickOnlyMe(i)
+				}
+				return true
+			case gdk.BUTTON_MIDDLE:
+				middleClickInvertCbs()
+				return true
+			default:
+				return false
+			}
+		})
+
+		if i == 0 {
+			_btn.SetLabel("buffer")
+			playBankCb.SetActive(true)
+		}
+
 		vbox, _ := gtk.BoxNew(gtk.ORIENTATION_VERTICAL, 5)
 		vbox.Add(_btn)
 		vbox.Add(playBankCb)
-		bankBtn.Add(vbox)
+		frame, _ := gtk.FrameNew("")
+		frame.SetBorderWidth(1)
+		vbox.SetBorderWidth(5)
+
+		frame.Add(vbox)
+		bankBtn.Add(frame)
 
 		banksBox.Add(bankBtn)
-		bankBtn.SetMarginBottom(10)
+		/*bankBtn.SetMarginBottom(10)
 		bankBtn.SetMarginStart(10)
 		bankBtn.SetMarginEnd(10)
-		bankBtn.SetMarginTop(10)
+		bankBtn.SetMarginTop(10)*/
 
 		ACTION := gdk.ACTION_COPY
 		bankBtn.DragSourceSet(gdk.BUTTON1_MASK|gdk.BUTTON2_MASK, targetsList, ACTION)
@@ -205,14 +258,21 @@ func ui(ctx context.Context, cancel func(), inP, outP int, inL []string, inN []i
 		bankBtn.Connect("drag-drop", func(self *gtk.EventBox, context *gdk.DragContext, x, y int, time int) {
 			fmt.Printf("drag-drop x=%d,y=%d %s %#v\n", x, y, _btn.GetLabel(), context)
 		})*/
+		bankBtn.SetProperty("bank-index", i)
 		bankBtn.Connect("drag-data-get", func(self *gtk.EventBox, ctx *gdk.DragContext, data *gtk.SelectionData, info, time int) {
-			println(_btn.GetLabel(), "SEND drag-data-get", info, time)
-			data.SetText(_btn.GetLabel())
+			data.SetData(gdk.SELECTION_PRIMARY, []byte{byte(i)})
 			//data.SetURIs([]string{"/tmp/test/source.txt"})
 		})
 		bankBtn.Connect("drag-data-received", func(self *gtk.EventBox, ctx *gdk.DragContext, x, y int, data *gtk.SelectionData, m int, t uint) {
-			println(_btn.GetLabel(), "RECV drag-fata-receive", data.GetText())
-			println("DnD:", data.GetText(), "→", _btn.GetLabel())
+			dst := i
+			src := int(data.GetData()[0])
+			logger.Printf("append bank %d to bank %d\n", src, dst)
+
+			SinkLoop <- Message{
+				ev:     BankDragDrop,
+				number: src,
+				port2:  dst,
+			}
 		})
 		bankBtn.Connect("drag-data-delete", func(self *gtk.EventBox, ctx *gdk.DragContext) {
 			println("drag-fata-delete")

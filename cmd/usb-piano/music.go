@@ -17,12 +17,24 @@ type RecEvent struct {
 	vel          uint8
 }
 
+// func (ev *RecEvent) Play(send func(midi.Message) error) error {
+func (ev *RecEvent) Message(on bool) midi.Message {
+	if on {
+		return midi.NoteOn(0, uint8(ev.note), ev.vel)
+	} else {
+		return midi.NoteOff(0, uint8(ev.note))
+	}
+}
+
 type RecTrack []RecEvent
 
 const DONT_SKIP_NOTES = true
 
 func convert(tr smf.Track) RecTrack {
 	rt := RecTrack{}
+	if len(tr) <= 2 {
+		return rt
+	}
 	/*
 		noteOn(A) , noteOff(A) → OK
 		noteOn(A), noteOff(B) → nope

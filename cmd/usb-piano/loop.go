@@ -55,25 +55,25 @@ func loop(ctx context.Context, cancel func(), in drivers.In, out drivers.Out) {
 	var absmillisec int32 = 0
 	TICKS := smf.New().TimeFormat.(smf.MetricTicks)
 
-	shoudStartRecording := false
-	isRecording := false
-
 	/*recordTrack.SendTo(TICKS, nil, func(m midi.Message, timestampms int32) {
-		d := time.Duration(timestampms) * 10
-		println(timestampms, d)
-		send(m)
-		time.Sleep(d)
+	d := time.Duration(timestampms) * 10
+	println(timestampms, d)
+	send(m)
+	time.Sleep(d)
 	})*/
 	playCtx, cancelPlay := context.WithCancel(ctx)
 	playCtx = context.WithValue(playCtx, charmlog.ContextKey, logger)
 
-	playTrack(playCtx, recordTrack, TICKS, send)
+	/*playTrack(playCtx, recordTrack, TICKS, send)
 	time.Sleep(time.Second)
-	playRTrack(playCtx, convert(recordTrack), TICKS, send)
+	playRTrack(playCtx, convert(recordTrack), TICKS, send)*/
 
+	state := NewState()
+	state.LoadTrack(0, recordTrack)
+	shoudStartRecording := false
+	isRecording := false
 	isSteps := false
-	stepIndex := 0
-	stepNotes := []uint8{}
+	lastOnStep := [NUM_BANKS]*RecEvent{}
 	stop, err := midi.ListenTo(in, func(msg midi.Message, absms int32) {
 		var ch, key, vel uint8
 
@@ -83,18 +83,26 @@ func loop(ctx context.Context, cancel func(), in drivers.In, out drivers.Out) {
 			//note := midi.Note(key)
 
 			if isSteps {
-				if stepIndex > len(stepNotes)-1 {
-					return
-				}
-				note := stepNotes[stepIndex]
 				if on {
-					send(midi.NoteOn(ch, note, vel))
-				} else {
-					send(midi.NoteOn(ch, note, vel))
-					stepIndex += 1
+					lastOnStep = state.StepPlay()
+				}
+				cnt := 0
+				for _, ev := range lastOnStep {
+					if ev != nil {
+						send(ev.Message(on))
+						cnt += 1
+					}
+				}
+				if cnt == 0 {
+					if on {
+						send(midi.NoteOn(ch, 1, vel))
+					} else {
+						send(midi.NoteOff(ch, 1))
+					}
 				}
 				return
 			}
+
 			if shoudStartRecording && on {
 				// START record
 				shoudStartRecording = false
@@ -115,7 +123,7 @@ func loop(ctx context.Context, cancel func(), in drivers.In, out drivers.Out) {
 			send(msg)
 		case msg.GetControlChange(&ch, &key, &vel):
 			if isSteps {
-				stepIndex = 0
+				state.ResetStep()
 			} else {
 				if vel == 127 {
 					SinkLoop <- Message{ev: Record}
@@ -154,6 +162,9 @@ loopchan:
 					SinkUI <- Message{ev: Record, boolean: false}
 					logger.Debug("stop recording")
 					recordTrack.Close(0)
+					state.Clear(0)
+					state.LoadTrack(0, recordTrack)
+					logger.Debug("put recordtrack into bank 0", "len", len(state.banks[0]))
 				} else { //START RECORD
 					shoudStartRecording = true
 					isRecording = false
@@ -214,13 +225,10 @@ loopchan:
 					logger.Debug("quantize done")
 				}()
 			case StepMode:
-				logger.Debug("set steps mode to", isSteps)
+				logger.Debug("set steps to", "mode", isSteps)
 				isSteps = !isSteps
-				stepIndex = 0
 				SinkUI <- Message{ev: StepMode, boolean: isSteps}
-				if isSteps {
-					stepNotes = trackToSteps(recordTrack)
-				}
+				// load stuff
 			case LoadFromFile:
 				logger.Debug("loading file", msg.str)
 				file, err := os.Open(msg.str)
@@ -252,8 +260,17 @@ loopchan:
 					logger.Error(err)
 				}
 			case BankStateChange:
+				state.EnableBank(msg.number, msg.boolean)
 				logger.Printf("set bank %d to state %t\n", msg.number, msg.boolean)
+			case BankDragDrop:
+				src := msg.number
+				dst := msg.port2
+				logger.Printf("append bank %d to bank %d\n", src, dst)
 
+				l1 := len(state.banks[dst])
+				state.Concat(dst, src)
+				l2 := len(state.banks[dst])
+				logger.Debug("bank %d went from", l1, l2)
 			}
 		}
 	}
