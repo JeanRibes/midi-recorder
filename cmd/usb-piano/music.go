@@ -93,6 +93,21 @@ func convert(tr smf.Track) RecTrack {
 	return rt
 }
 
+func (rt *RecTrack) Convert() smf.Track {
+	tr := smf.Track{}
+	tr.Add(0, smf.MetaTempo(BPM))
+	absTicks := uint32(0)
+	for _, ev := range *rt {
+		absTicks += ev.delta
+		tr.Add(absTicks, ev.Message(true))
+		absTicks += ev.duration
+		tr.Add(absTicks, ev.Message(false))
+		absTicks += ev.silenceAfter
+	}
+	tr.Close(absTicks)
+	return tr
+}
+
 func playRTrack(ctx context.Context, recordTrack RecTrack, ticks smf.MetricTicks, send func(midi.Message) error) error {
 	absms := uint32(0)
 	logger := charmlog.FromContext(ctx)

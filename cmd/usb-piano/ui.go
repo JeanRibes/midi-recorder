@@ -258,7 +258,6 @@ func ui(ctx context.Context, cancel func(), inP, outP int, inL []string, inN []i
 		bankBtn.Connect("drag-drop", func(self *gtk.EventBox, context *gdk.DragContext, x, y int, time int) {
 			fmt.Printf("drag-drop x=%d,y=%d %s %#v\n", x, y, _btn.GetLabel(), context)
 		})*/
-		bankBtn.SetProperty("bank-index", i)
 		bankBtn.Connect("drag-data-get", func(self *gtk.EventBox, ctx *gdk.DragContext, data *gtk.SelectionData, info, time int) {
 			data.SetData(gdk.SELECTION_PRIMARY, []byte{byte(i)})
 			//data.SetURIs([]string{"/tmp/test/source.txt"})

@@ -50,10 +50,10 @@ func main() {
 		he(err)
 	}
 
+	state := NewState()
+
 	TMPFILE := os.Getenv("XDG_RUNTIME_DIR") + "/usb-piano.mid"
-	if tr, err := loadTrack(TMPFILE); err == nil {
-		recordTrack = tr
-	} else {
+	if err := state.LoadFromFile(TMPFILE); err != nil {
 		logger.Error(err)
 	}
 
@@ -130,12 +130,12 @@ masterLoop:
 			loopCtx, cancelLoop = context.WithCancel(mainCtx)
 			logger.Info("mc: restart Loop")
 			if !LoopDied {
-				go loop(loopCtx, cancelLoop, in, out)
+				go loop(loopCtx, cancelLoop, in, out, state)
 			}
 		}
 	}
 
-	if err := saveTrack(recordTrack, TMPFILE); err != nil {
+	if err := state.SaveToFile(TMPFILE); err != nil {
 		logger.Error(err)
 	}
 

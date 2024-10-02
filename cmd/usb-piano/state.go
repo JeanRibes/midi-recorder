@@ -1,6 +1,7 @@
 package main
 
 import (
+	"errors"
 	"sync"
 
 	"gitlab.com/gomidi/midi/v2/smf"
@@ -52,6 +53,10 @@ func (s *LoopState) TempIntoBank(bank int) {
 	s.LoadTrack(bank, s.tempTrack)
 }
 
+func (s *LoopState) EndRecord() {
+	s.TempIntoBank(0)
+}
+
 func (s *LoopState) Clear(bank int) {
 	s.Lock()
 	s.banks[bank] = s.banks[bank][0:0]
@@ -84,4 +89,35 @@ func (s *LoopState) ResetStep() {
 func (s *LoopState) EnableBank(bank int, enable bool) bool {
 	s.playBank[bank] = enable
 	return s.playBank[bank]
+}
+
+func (s *LoopState) SaveToFile(filepath string) (errs error) {
+	f := smf.New()
+	if err := f.Add(s.tempTrack); err != nil {
+		errs = errors.Join(errs, err)
+	}
+	for _, bank := range s.banks {
+		if err := f.Add(bank.Convert()); err != nil {
+			errs = errors.Join(errs, err)
+		}
+	}
+	if err := f.WriteFile(filepath); err != nil {
+		errs = errors.Join(errs, err)
+	}
+	return errs
+}
+
+func (s *LoopState) LoadFromFile(filepath string) error {
+	f, err := smf.ReadFile(filepath)
+	if err != nil {
+		return nil
+	}
+	if f.NumTracks() < 1 {
+		return errors.New("no tracks in file")
+	}
+	s.tempTrack = f.Tracks[0]
+	for i, track := range f.Tracks[1:] {
+		s.Append(i, convert(track))
+	}
+	return nil
 }

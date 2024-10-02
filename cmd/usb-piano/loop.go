@@ -3,7 +3,6 @@ package main
 import (
 	"bytes"
 	"context"
-	"errors"
 	"log"
 	"os"
 	"strings"
@@ -17,13 +16,7 @@ import (
 	"gitlab.com/gomidi/quantizer/lib/quantizer"
 )
 
-var recordTrack smf.Track
-
-func init() {
-	recordTrack.Add(0, smf.MetaTempo(BPM))
-}
-
-func loop(ctx context.Context, cancel func(), in drivers.In, out drivers.Out) {
+func loop(ctx context.Context, cancel func(), in drivers.In, out drivers.Out, state *LoopState) {
 	LoopDied = false
 	logger := charmlog.NewWithOptions(os.Stdout, charmlog.Options{
 		Level: charmlog.DebugLevel,
@@ -68,8 +61,6 @@ func loop(ctx context.Context, cancel func(), in drivers.In, out drivers.Out) {
 	time.Sleep(time.Second)
 	playRTrack(playCtx, convert(recordTrack), TICKS, send)*/
 
-	state := NewState()
-	state.LoadTrack(0, recordTrack)
 	shoudStartRecording := false
 	isRecording := false
 	isSteps := false
@@ -107,8 +98,8 @@ func loop(ctx context.Context, cancel func(), in drivers.In, out drivers.Out) {
 				// START record
 				shoudStartRecording = false
 				isRecording = true
-				recordTrack = smf.Track{}
-				recordTrack.Add(0, smf.MetaTempo(BPM))
+				state.tempTrack = smf.Track{}
+				state.tempTrack.Add(0, smf.MetaTempo(BPM))
 				absmillisec = absms
 				/*main.Add(0, msg)
 				send(msg)
@@ -118,7 +109,7 @@ func loop(ctx context.Context, cancel func(), in drivers.In, out drivers.Out) {
 				deltams := absms - absmillisec
 				absmillisec = absms
 				delta := TICKS.Ticks(BPM, time.Duration(deltams)*time.Millisecond)
-				recordTrack.Add(delta, msg)
+				state.tempTrack.Add(delta, msg)
 			}
 			send(msg)
 		case msg.GetControlChange(&ch, &key, &vel):
@@ -161,9 +152,9 @@ loopchan:
 					isRecording = false
 					SinkUI <- Message{ev: Record, boolean: false}
 					logger.Debug("stop recording")
-					recordTrack.Close(0)
+					state.tempTrack.Close(0)
 					state.Clear(0)
-					state.LoadTrack(0, recordTrack)
+					state.EndRecord()
 					logger.Debug("put recordtrack into bank 0", "len", len(state.banks[0]))
 				} else { //START RECORD
 					shoudStartRecording = true
@@ -202,7 +193,7 @@ loopchan:
 						currentlyPlaying = true
 						logger.Info("start playing")
 						//	playTrack(playCtx, recordTrack, TICKS, send)
-						playRTrack(playCtx, convert(recordTrack), TICKS, send)
+						playRTrack(playCtx, state.banks[0], TICKS, send)
 						logger.Info("finished playing")
 						cancelPlay()
 					}()
@@ -212,15 +203,15 @@ loopchan:
 					log.Printf("quantize at %d BPM\n", msg.number)
 					var bf bytes.Buffer
 					tmpFile := smf.New()
-					recordTrack[0].Message = smf.MetaTempo(float64(msg.number))
-					tmpFile.Add(recordTrack)
+					state.tempTrack[0].Message = smf.MetaTempo(float64(msg.number))
+					tmpFile.Add(state.tempTrack)
 					_, err = tmpFile.WriteTo(&bf)
 					if err != nil {
 						logger.Error(err)
 						return
 					}
 					he(quantizer.Quantize(&bf, &bf))
-					recordTrack = smf.ReadTracksFrom(&bf).SMF().Tracks[0]
+					state.LoadTrack(0, smf.ReadTracksFrom(&bf).SMF().Tracks[0])
 					SinkUI <- Message{ev: Quantize}
 					logger.Debug("quantize done")
 				}()
@@ -243,7 +234,9 @@ loopchan:
 					SinkUI <- Message{ev: Error, str: "pas un fichier MIDI"}
 					continue
 				}
-				recordTrack = midiFile.Tracks[0]
+				state.tempTrack = midiFile.Tracks[0]
+				state.Clear(0)
+				state.EndRecord()
 			case SaveToFile:
 				fileName := msg.str
 				if !strings.HasSuffix(fileName, ".mid") {
@@ -251,8 +244,8 @@ loopchan:
 				}
 				logger.Info("saving to", "filename", fileName)
 				midiFile := smf.New()
-				recordTrack.Close(0)
-				if err := midiFile.Add(recordTrack); err != nil {
+				state.tempTrack.Close(0)
+				if err := midiFile.Add(state.tempTrack); err != nil {
 					logger.Error(err)
 					continue
 				}
@@ -281,23 +274,6 @@ loopchan:
 	} else {
 		println("already closed")
 	}
-}
-
-func saveTrack(tr smf.Track, filepath string) error {
-	s := smf.New()
-	s.Add(tr)
-	return s.WriteFile(filepath)
-}
-
-func loadTrack(filepath string) (smf.Track, error) {
-	s, err := smf.ReadFile(filepath)
-	if err != nil {
-		return nil, err
-	}
-	if s.NumTracks() > 0 {
-		return s.Tracks[0], nil
-	}
-	return nil, errors.New("no tracks in file")
 }
 
 func playTrack(ctx context.Context, recordTrack smf.Track, ticks smf.MetricTicks, send func(midi.Message) error) error {
