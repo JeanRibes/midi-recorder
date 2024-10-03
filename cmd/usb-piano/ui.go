@@ -23,39 +23,69 @@ func ui(ctx context.Context, cancel func(), inP, outP int, inL []string, inN []i
 	})
 	logger.Info("start")
 	gtk.Init(nil)
-	win, err := gtk.WindowNew(gtk.WINDOW_TOPLEVEL)
+
+	builder, err := gtk.BuilderNewFromFile("ui.glade") //remplacer par du embed
+	he(err)
+
+	_mainWin, _ := builder.GetObject("mainWin")
+	mainWin := _mainWin.(*gtk.Window)
+	_reconnectMidi, _ := builder.GetObject("reconnectMidi")
+	reconnectMidi := _reconnectMidi.(*gtk.Button)
+	_reloadBtn, _ := builder.GetObject("reloadBtn")
+	reloadBtn := _reloadBtn.(*gtk.Button)
+	_saveState, _ := builder.GetObject("saveState")
+	saveState := _saveState.(*gtk.Button)
+	_comboInPorts, _ := builder.GetObject("comboInPorts")
+	comboInPorts := _comboInPorts.(*gtk.ComboBox)
+	_comboOutPorts, _ := builder.GetObject("comboOutPorts")
+	comboOutPorts := _comboOutPorts.(*gtk.ComboBox)
+	_bpmEntry, _ := builder.GetObject("bpmEntry")
+	bpmEntry := _bpmEntry.(*gtk.Entry)
+	_ticksEntry, _ := builder.GetObject("ticksEntry")
+	ticksEntry := _ticksEntry.(*gtk.Entry)
+	_quantizeBtn, _ := builder.GetObject("quantizeBtn")
+	quantizeBtn := _quantizeBtn.(*gtk.Button)
+	_recordBtn, _ := builder.GetObject("recordBtn")
+	recordBtn := _recordBtn.(*gtk.Button)
+	_playBtn, _ := builder.GetObject("playBtn")
+	playBtn := _playBtn.(*gtk.Button)
+	_stepsChb, _ := builder.GetObject("stepsChb")
+	stepsChb := _stepsChb.(*gtk.CheckButton)
+	_stepReset, _ := builder.GetObject("stepReset")
+	stepReset := _stepReset.(*gtk.Button)
+	_banksBox, _ := builder.GetObject("banksBox")
+	banksBox := _banksBox.(*gtk.Box)
+	_deleteZone, _ := builder.GetObject("deleteZone")
+	deleteZone := _deleteZone.(*gtk.EventBox)
+
+	_play, _ := builder.GetObject("play")
+	play := _play.(*gtk.Image)
+	_pause, _ := builder.GetObject("pause")
+	pause := _pause.(*gtk.Image)
+
 	if err != nil {
 		logger.Error("Unable to create window:", err)
 	}
-	win.SetTitle("Piano Jean")
-	windestroyhandle := win.Connect("destroy", func() {
+	windestroyhandle := mainWin.Connect("destroy", func() {
 		//cancel()
 		logger.Debug("close win, sending quit event")
 		MasterControl <- Message{ev: Quit}
 	})
 
-	mainBox, _ := gtk.BoxNew(gtk.ORIENTATION_VERTICAL, 1)
-
-	recordBtn, _ := gtk.ButtonNew()
-	recordBtn.SetLabel("Record")
 	recordBtn.Connect("clicked", func() {
 		recordBtn.SetSensitive(false)
 		SinkLoop <- Message{ev: Record}
 	})
 
-	playBtn, _ := gtk.ButtonNewWithLabel("Play")
 	playBtn.Connect("clicked", func() {
 		SinkLoop <- Message{ev: PlayPause}
 	})
 
-	quantizeBox, _ := gtk.BoxNew(gtk.ORIENTATION_HORIZONTAL, 10)
-
-	quantizeInput, _ := gtk.EntryNew()
-	quantizeInput.SetText("120")
-	quantizeBtn, _ := gtk.ButtonNewWithLabel("Quantize")
 	quantizeBtn.Connect("clicked", func() {
 		quantizeBtn.SetSensitive(false)
-		txt, err := quantizeInput.GetText()
+		txt, err := bpmEntry.GetText()
+
+		ticksEntry.GetText()
 		if err == nil {
 			var i int64
 			if i, err = strconv.ParseInt(txt, 10, 32); err == nil {
@@ -69,17 +99,14 @@ func ui(ctx context.Context, cancel func(), inP, outP int, inL []string, inN []i
 			quantizeBtn.SetSensitive(true)
 		}
 	})
-	quantizeBox.Add(quantizeInput)
-	quantizeBox.Add(quantizeBtn)
 
-	stepBtn, _ := gtk.ButtonNewWithLabel("Activer Mode steps")
-	stepBtn.Connect("clicked", func() {
+	stepsChb.Connect("clicked", func() {
 		SinkLoop <- Message{ev: StepMode}
 	})
 
 	loadFileBtn, _ := gtk.ButtonNewWithLabel("Charger depuis fichier")
 	loadFileBtn.Connect("clicked", func() {
-		d, err := gtk.FileChooserDialogNewWith2Buttons("Charger MIDI", win, gtk.FILE_CHOOSER_ACTION_OPEN, "Ouvrir", gtk.RESPONSE_ACCEPT, "Annuler", gtk.RESPONSE_CANCEL)
+		d, err := gtk.FileChooserDialogNewWith2Buttons("Charger MIDI", mainWin, gtk.FILE_CHOOSER_ACTION_OPEN, "Ouvrir", gtk.RESPONSE_ACCEPT, "Annuler", gtk.RESPONSE_CANCEL)
 		he(err)
 		filter, _ := gtk.FileFilterNew()
 		filter.AddPattern("*.mid")
@@ -95,9 +122,9 @@ func ui(ctx context.Context, cancel func(), inP, outP int, inL []string, inN []i
 		d.Destroy()
 	})
 
-	saveFileBtn, _ := gtk.ButtonNewWithLabel("Sauvegarder vers fichier")
-	saveFileBtn.Connect("clicked", func() {
-		d, err := gtk.FileChooserDialogNewWith2Buttons("Enregistrer MIDI", win, gtk.FILE_CHOOSER_ACTION_SAVE, "Sauvegarder", gtk.RESPONSE_ACCEPT, "Annuler", gtk.RESPONSE_CANCEL)
+	//saveFileBtn, _ := gtk.ButtonNewWithLabel("Sauvegarder vers fichier")
+	saveState.Connect("clicked", func() {
+		d, err := gtk.FileChooserDialogNewWith2Buttons("Enregistrer MIDI", mainWin, gtk.FILE_CHOOSER_ACTION_SAVE, "Sauvegarder", gtk.RESPONSE_ACCEPT, "Annuler", gtk.RESPONSE_CANCEL)
 		he(err)
 		d.SetDoOverwriteConfirmation(true)
 		response := d.Run()
@@ -109,13 +136,12 @@ func ui(ctx context.Context, cancel func(), inP, outP int, inL []string, inN []i
 	})
 
 	errors := ""
-	errorDialog := gtk.MessageDialogNew(win, gtk.DIALOG_MODAL, gtk.MESSAGE_ERROR, gtk.BUTTONS_CLOSE, "Erreur")
+	errorDialog := gtk.MessageDialogNew(mainWin, gtk.DIALOG_MODAL, gtk.MESSAGE_ERROR, gtk.BUTTONS_CLOSE, "Erreur")
 	errorDialog.Connect("response", func() {
 		errorDialog.Hide()
 		errors = ""
 	})
 
-	reloadBtn, _ := gtk.ButtonNewWithLabel("Reload UI")
 	reloadBtn.Connect("clicked", func() {
 		cancel()
 	})
@@ -135,21 +161,20 @@ func ui(ctx context.Context, cancel func(), inP, outP int, inL []string, inN []i
 			[]interface{}{outN[i], port},
 		)
 	}
-	comboInPorts, _ := gtk.ComboBoxNewWithModel(listIn)
+	comboInPorts.SetModel(listIn)
 	rendererIn, _ := gtk.CellRendererTextNew()
 	comboInPorts.PackStart(rendererIn, true)
 	//comboInPorts.AddAttribute(rendererIn, "number", 0)
 	comboInPorts.AddAttribute(rendererIn, "text", 1)
 	comboInPorts.SetActive(inP)
 
-	comboOutPorts, _ := gtk.ComboBoxNewWithModel(listOut)
+	comboOutPorts.SetModel(listOut)
 	rendererOut, _ := gtk.CellRendererTextNew()
 	comboOutPorts.PackStart(rendererOut, true)
 	comboOutPorts.AddAttribute(rendererOut, "text", 1)
 	comboOutPorts.SetActive(outP)
 
-	changePortsBtn, _ := gtk.ButtonNewWithLabel("Reconnect MIDI")
-	changePortsBtn.Connect("clicked", func() {
+	reconnectMidi.Connect("clicked", func() {
 		inIter, err := comboInPorts.GetActiveIter()
 		he(err)
 		inVal, err := listIn.GetValue(inIter, 0)
@@ -167,7 +192,10 @@ func ui(ctx context.Context, cancel func(), inP, outP int, inL []string, inN []i
 		}
 	})
 
-	banksBox, _ := gtk.BoxNew(gtk.ORIENTATION_HORIZONTAL, 5)
+	stepReset.Connect("clicked", func() {
+		SinkLoop <- Message{ev: ResetStep}
+	})
+
 	targetsList := []gtk.TargetEntry{
 		targ(gtk.TargetEntryNew("text/plain", gtk.TARGET_OTHER_WIDGET, 0)),
 		//targ(gtk.TargetEntryNew("audio/midi", gtk.TARGET_OTHER_APP, 0)),
@@ -270,13 +298,6 @@ func ui(ctx context.Context, cancel func(), inP, outP int, inL []string, inN []i
 
 	}
 
-	deleteZone, _ := gtk.EventBoxNew()
-	deleteImg, err := gtk.ImageNewFromIconName("edit-delete-symbolic", gtk.ICON_SIZE_DIALOG)
-	if err != nil {
-		he(err)
-	}
-	deleteZone.Add(deleteImg)
-
 	deleteZone.DragDestSet(gtk.DEST_DEFAULT_ALL, targetsList, ACTION)
 	deleteZone.Connect("drag-data-received", func(self *gtk.EventBox, ctx *gdk.DragContext, x, y int, data *gtk.SelectionData, m int, t uint) {
 		src := int(data.GetData()[0])
@@ -294,23 +315,7 @@ func ui(ctx context.Context, cancel func(), inP, outP int, inL []string, inN []i
 	loadFileBtn2.DragDestSet(gtk.DEST_DEFAULT_ALL, targetsList, gdk.ACTION_COPY)
 	mainBox.Add(loadFileBtn2)*/
 
-	mainBox.Add(reloadBtn)
-
-	mainBox.Add(comboInPorts)
-	mainBox.Add(comboOutPorts)
-	mainBox.Add(changePortsBtn)
-
-	mainBox.Add(recordBtn)
-	mainBox.Add(quantizeBox)
-	mainBox.Add(playBtn)
-	mainBox.Add(stepBtn)
-	mainBox.Add(banksBox)
-	mainBox.Add(deleteZone)
-	mainBox.Add(loadFileBtn)
-	mainBox.Add(saveFileBtn)
-
-	win.Add(mainBox)
-	win.ShowAll()
+	mainWin.ShowAll()
 
 	go func() {
 		for {
@@ -335,20 +340,19 @@ func ui(ctx context.Context, cancel func(), inP, outP int, inL []string, inN []i
 					}
 				case PlayPause:
 					if msg.boolean {
-						glib.IdleAdd(func() { playBtn.SetLabel("Stop") })
+						glib.IdleAdd(func() {
+							playBtn.SetImage(pause)
+						})
 					} else {
-						glib.IdleAdd(func() { playBtn.SetLabel("Play") })
+						glib.IdleAdd(func() {
+							playBtn.SetImage(play)
+						})
 					}
 				case Quantize:
 					glib.IdleAdd(func() { quantizeBtn.SetSensitive(true) })
 				case StepMode:
-					glib.IdleAdd(func() {
-						if msg.boolean {
-							stepBtn.SetLabel("Désactiver mode steps")
-						} else {
-							stepBtn.SetLabel("Activer mode steps")
-						}
-					})
+					// checkbox
+					continue
 				case Error:
 					if len(errors) == 0 {
 						errors = msg.str
@@ -375,7 +379,7 @@ func ui(ctx context.Context, cancel func(), inP, outP int, inL []string, inN []i
 	}()
 	gtk.Main()
 	logger.Info("stop")
-	win.HandlerDisconnect(windestroyhandle)
-	win.Destroy()
+	mainWin.HandlerDisconnect(windestroyhandle)
+	mainWin.Destroy()
 
 }

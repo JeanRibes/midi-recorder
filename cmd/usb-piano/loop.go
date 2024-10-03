@@ -228,6 +228,8 @@ loopchan:
 				isSteps = !isSteps
 				SinkUI <- Message{ev: StepMode, boolean: isSteps}
 				state.ResetStep()
+			case ResetStep:
+				state.ResetStep()
 				// load stuff
 			case LoadFromFile:
 				logger.Debug("loading file", msg.str)
