@@ -121,3 +121,12 @@ func (s *LoopState) LoadFromFile(filepath string) error {
 	}
 	return nil
 }
+
+func (s *LoopState) Stats() (res [NUM_BANKS]int) {
+	s.Lock()
+	for i, bank := range s.banks {
+		res[i] = len(bank)
+	}
+	s.Unlock()
+	return
+}

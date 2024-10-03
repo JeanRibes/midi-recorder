@@ -189,7 +189,7 @@ func ui(ctx context.Context, cancel func(), inP, outP int, inL []string, inN []i
 		}
 		bankCbs[rightClicked].SetActive(true)
 	}
-
+	ACTION := gdk.ACTION_COPY
 	for i := 0; i < NUM_BANKS; i++ {
 		bankBtn, _ := gtk.EventBoxNew() //gtk.LabelNew(fmt.Sprintf("bank \n%d", i))
 		_btn, _ := gtk.LabelNew(fmt.Sprintf("bank %d", i))
@@ -245,7 +245,6 @@ func ui(ctx context.Context, cancel func(), inP, outP int, inL []string, inN []i
 		bankBtn.SetMarginEnd(10)
 		bankBtn.SetMarginTop(10)*/
 
-		ACTION := gdk.ACTION_COPY
 		bankBtn.DragSourceSet(gdk.BUTTON1_MASK|gdk.BUTTON2_MASK, targetsList, ACTION)
 		bankBtn.DragDestSet(gtk.DEST_DEFAULT_ALL, targetsList, ACTION)
 		/*bankBtn.Connect("drag-begin", func(self *gtk.EventBox, context *gdk.DragContext) {
@@ -280,6 +279,23 @@ func ui(ctx context.Context, cancel func(), inP, outP int, inL []string, inN []i
 
 	}
 
+	deleteZone, _ := gtk.EventBoxNew()
+	deleteImg, err := gtk.ImageNewFromIconName("edit-delete-symbolic", gtk.ICON_SIZE_DIALOG)
+	if err != nil {
+		he(err)
+	}
+	deleteZone.Add(deleteImg)
+
+	deleteZone.DragDestSet(gtk.DEST_DEFAULT_ALL, targetsList, ACTION)
+	deleteZone.Connect("drag-data-received", func(self *gtk.EventBox, ctx *gdk.DragContext, x, y int, data *gtk.SelectionData, m int, t uint) {
+		src := int(data.GetData()[0])
+		logger.Info("delete bank", "index", src)
+		SinkLoop <- Message{
+			ev:     BankClear,
+			number: src,
+		}
+	})
+
 	/*loadFileBtn2, _ := gtk.FileChooserButtonNew("ouvrir", gtk.FILE_CHOOSER_ACTION_OPEN) //comme en HTML
 	loadFileBtn2.Connect("file-set", func() {
 		println(loadFileBtn2.GetFilename())
@@ -298,6 +314,7 @@ func ui(ctx context.Context, cancel func(), inP, outP int, inL []string, inN []i
 	mainBox.Add(playBtn)
 	mainBox.Add(stepBtn)
 	mainBox.Add(banksBox)
+	mainBox.Add(deleteZone)
 	mainBox.Add(loadFileBtn)
 	mainBox.Add(saveFileBtn)
 

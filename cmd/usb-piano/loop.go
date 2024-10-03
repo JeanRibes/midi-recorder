@@ -219,6 +219,7 @@ loopchan:
 				logger.Debug("set steps to", "mode", isSteps)
 				isSteps = !isSteps
 				SinkUI <- Message{ev: StepMode, boolean: isSteps}
+				state.ResetStep()
 				// load stuff
 			case LoadFromFile:
 				logger.Debug("loading file", msg.str)
@@ -264,6 +265,9 @@ loopchan:
 				state.Concat(dst, src)
 				l2 := len(state.banks[dst])
 				logger.Debug("bank %d went from", l1, l2)
+			case BankClear:
+				src := msg.number
+				state.Clear(src)
 			}
 		}
 	}

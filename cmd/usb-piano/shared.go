@@ -14,6 +14,7 @@ const (
 	RestartMIDI
 	BankStateChange
 	BankDragDrop
+	BankClear
 )
 
 type Message struct {
