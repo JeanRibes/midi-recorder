@@ -15,6 +15,7 @@ const (
 	BankStateChange
 	BankDragDrop
 	BankClear
+	BankLengthNotify
 )
 
 type Message struct {

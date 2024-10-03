@@ -72,7 +72,7 @@ func (s *LoopState) StepPlay() [NUM_BANKS]*RecEvent {
 
 	s.Lock()
 	for bankIndex, bank := range s.banks {
-		if s.stepIndex+1 < len(bank) && s.playBank[bankIndex] {
+		if s.stepIndex < len(bank) && s.playBank[bankIndex] {
 			res[bankIndex] = &bank[s.stepIndex]
 		}
 	}
@@ -101,6 +101,10 @@ func (s *LoopState) SaveToFile(filepath string) (errs error) {
 			errs = errors.Join(errs, err)
 		}
 	}
+	/*f.Tracks[0][0] = smf.Event{
+		Message: smf.MetaText("yo"),
+		Delta:   0,
+	}*/
 	if err := f.WriteFile(filepath); err != nil {
 		errs = errors.Join(errs, err)
 	}
@@ -119,6 +123,10 @@ func (s *LoopState) LoadFromFile(filepath string) error {
 	for i, track := range f.Tracks[1:] {
 		s.Append(i, convert(track))
 	}
+	/*ms := ""
+	if f.Tracks[0][0].Message.GetMetaText(&ms) {
+		println(ms)
+	}*/
 	return nil
 }
 
@@ -130,3 +138,18 @@ func (s *LoopState) Stats() (res [NUM_BANKS]int) {
 	s.Unlock()
 	return
 }
+
+func (s *LoopState) Stat(bank int) (res int) {
+	s.Lock()
+	res = len(s.banks[bank])
+	s.Unlock()
+	return
+}
+
+/*
+func init() {
+	tr := smf.Track{}
+	tr.Add(0, smf.MetaText("test"))
+	smf.MetaText("test")
+}
+*/

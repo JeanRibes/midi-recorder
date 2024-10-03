@@ -129,6 +129,14 @@ func loop(ctx context.Context, cancel func(), in drivers.In, out drivers.Out, st
 		return
 	}
 
+	for bank, leng := range state.Stats() {
+		SinkUI <- Message{
+			ev:     BankLengthNotify,
+			number: bank,
+			port2:  leng,
+		}
+	}
+
 	LoopDied = true
 	currentlyPlaying := false
 loopchan:
@@ -265,9 +273,19 @@ loopchan:
 				state.Concat(dst, src)
 				l2 := len(state.banks[dst])
 				logger.Debug("bank %d went from", l1, l2)
+				SinkUI <- Message{
+					ev:     BankLengthNotify,
+					number: dst,
+					port2:  state.Stat(dst),
+				}
 			case BankClear:
 				src := msg.number
 				state.Clear(src)
+				SinkUI <- Message{
+					ev:     BankLengthNotify,
+					number: src,
+					port2:  state.Stat(src),
+				}
 			}
 		}
 	}
