@@ -4,10 +4,9 @@ import (
 	"errors"
 	"sync"
 
+	. "github.com/JeanRibes/midi/shared"
 	"gitlab.com/gomidi/midi/v2/smf"
 )
-
-const NUM_BANKS = 6
 
 type LoopState struct {
 	Banks     [NUM_BANKS]RecTrack // pour jouer en mode "steps"

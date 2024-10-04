@@ -8,6 +8,7 @@ import (
 	"time"
 
 	. "github.com/JeanRibes/midi/music"
+	music "github.com/JeanRibes/midi/music"
 	. "github.com/JeanRibes/midi/shared"
 	ui "github.com/JeanRibes/midi/ui"
 	charmlog "github.com/charmbracelet/log"
@@ -131,7 +132,7 @@ masterLoop:
 			loopCtx, cancelLoop = context.WithCancel(mainCtx)
 			logger.Info("mc: restart Loop")
 			if !LoopDied {
-				go loop(loopCtx, cancelLoop, in, out, state)
+				go music.Run(loopCtx, cancelLoop, in, out, state)
 			}
 		}
 	}

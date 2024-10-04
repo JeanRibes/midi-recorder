@@ -9,7 +9,6 @@ import (
 
 	charmlog "github.com/charmbracelet/log"
 
-	. "github.com/JeanRibes/midi/music"
 	. "github.com/JeanRibes/midi/shared"
 	"github.com/gotk3/gotk3/gdk"
 	"github.com/gotk3/gotk3/glib"

@@ -41,3 +41,5 @@ func init() {
 
 var LoopDied bool = false
 var BPM = float64(120)
+
+const NUM_BANKS = 6

@@ -1,4 +1,4 @@
-package main
+package music
 
 import (
 	"bytes"
@@ -9,7 +9,6 @@ import (
 
 	charmlog "github.com/charmbracelet/log"
 
-	. "github.com/JeanRibes/midi/music"
 	. "github.com/JeanRibes/midi/shared"
 	"gitlab.com/gomidi/midi/v2"
 	"gitlab.com/gomidi/midi/v2/drivers"
@@ -17,7 +16,7 @@ import (
 	"gitlab.com/gomidi/quantizer/lib/quantizer"
 )
 
-func loop(ctx context.Context, cancel func(), in drivers.In, out drivers.Out, state *LoopState) {
+func Run(ctx context.Context, cancel func(), in drivers.In, out drivers.Out, state *LoopState) {
 	LoopDied = false
 	logger := charmlog.NewWithOptions(os.Stdout, charmlog.Options{
 		Level:           charmlog.DebugLevel,
@@ -36,8 +35,13 @@ func loop(ctx context.Context, cancel func(), in drivers.In, out drivers.Out, st
 		cancel()
 		return
 	}
-	he(send(midi.Reset()))
-	he(send(midi.ControlChange(0, 64, 127))) //sustain
+	if err := send(midi.Reset()); err != nil {
+		logger.Error(err)
+	}
+	// sustain
+	if err := send(midi.ControlChange(0, 64, 127)); err != nil {
+		logger.Error(err)
+	}
 	if in == nil {
 		logger.Error("input port is nil")
 		SinkUI <- Message{Type: Error, String: "impossible d'ouvrir ce port MIDI en entrée"}
@@ -219,7 +223,10 @@ loopchan:
 						logger.Error(err)
 						return
 					}
-					he(quantizer.Quantize(&bf, &bf))
+					if err := quantizer.Quantize(&bf, &bf); err != nil {
+						logger.Error(err)
+						return
+					}
 					state.LoadTrack(0, smf.ReadTracksFrom(&bf).SMF().Tracks[0])
 					SinkUI <- Message{Type: Quantize}
 					logger.Debug("quantize done")
