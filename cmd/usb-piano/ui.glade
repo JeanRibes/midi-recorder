@@ -27,11 +27,6 @@
     <property name="can-focus">False</property>
     <property name="stock">gtk-disconnect</property>
   </object>
-  <object class="GtkImage" id="record">
-    <property name="visible">True</property>
-    <property name="can-focus">False</property>
-    <property name="stock">gtk-media-record</property>
-  </object>
   <object class="GtkImage" id="refresh">
     <property name="visible">True</property>
     <property name="can-focus">False</property>
@@ -46,6 +41,11 @@
     <property name="visible">True</property>
     <property name="can-focus">False</property>
     <property name="stock">gtk-save</property>
+  </object>
+  <object class="GtkImage" id="startrecord">
+    <property name="visible">True</property>
+    <property name="can-focus">False</property>
+    <property name="stock">gtk-media-record</property>
   </object>
   <object class="GtkImage" id="steps">
     <property name="visible">True</property>
@@ -197,7 +197,6 @@
                         <property name="visible">True</property>
                         <property name="can-focus">True</property>
                         <property name="receives-default">True</property>
-                        <property name="image">record</property>
                         <property name="image-position">right</property>
                         <accelerator key="r" signal="clicked"/>
                         <accelerator key="e" signal="clicked"/>
@@ -263,9 +262,21 @@
                   </packing>
                 </child>
                 <child>
-                  <object class="GtkBox">
+                  <object class="GtkBox" id="fileButtons">
                     <property name="visible">True</property>
                     <property name="can-focus">False</property>
+                    <child>
+                      <object class="GtkFileChooserButton" id="importBankBtn">
+                        <property name="visible">True</property>
+                        <property name="can-focus">False</property>
+                        <property name="title" translatable="yes"/>
+                      </object>
+                      <packing>
+                        <property name="expand">False</property>
+                        <property name="fill">True</property>
+                        <property name="position">0</property>
+                      </packing>
+                    </child>
                     <child>
                       <object class="GtkButton" id="saveStateBtn">
                         <property name="label" translatable="yes">Enregistrer session</property>
@@ -277,7 +288,7 @@
                       <packing>
                         <property name="expand">False</property>
                         <property name="fill">True</property>
-                        <property name="position">0</property>
+                        <property name="position">1</property>
                       </packing>
                     </child>
                     <child>
@@ -291,7 +302,7 @@
                       <packing>
                         <property name="expand">False</property>
                         <property name="fill">True</property>
-                        <property name="position">1</property>
+                        <property name="position">2</property>
                       </packing>
                     </child>
                     <child>
@@ -305,13 +316,78 @@
                   </packing>
                 </child>
                 <child>
-                  <object class="GtkBox">
+                  <object class="GtkButtonBox">
                     <property name="visible">True</property>
                     <property name="can-focus">False</property>
+                    <property name="orientation">vertical</property>
+                    <property name="layout-style">start</property>
                     <child>
-                      <object class="GtkEventBox" id="deleteZone">
+                      <object class="GtkRadioButton" id="radioTest">
+                        <property name="label" translatable="yes">enregistrement vers buffer</property>
+                        <property name="visible">True</property>
+                        <property name="can-focus">True</property>
+                        <property name="receives-default">False</property>
+                        <property name="active">True</property>
+                        <property name="draw-indicator">True</property>
+                      </object>
+                      <packing>
+                        <property name="expand">True</property>
+                        <property name="fill">True</property>
+                        <property name="position">0</property>
+                      </packing>
+                    </child>
+                    <child>
+                      <object class="GtkRadioButton" id="radiobutton1">
+                        <property name="label" translatable="yes">enregistrement step multitrack</property>
+                        <property name="visible">True</property>
+                        <property name="can-focus">True</property>
+                        <property name="receives-default">False</property>
+                        <property name="active">True</property>
+                        <property name="draw-indicator">True</property>
+                        <property name="group">radioTest</property>
+                      </object>
+                      <packing>
+                        <property name="expand">True</property>
+                        <property name="fill">True</property>
+                        <property name="position">1</property>
+                      </packing>
+                    </child>
+                    <child>
+                      <object class="GtkRadioButton" id="radiobutton2">
+                        <property name="label" translatable="yes">repos</property>
+                        <property name="visible">True</property>
+                        <property name="can-focus">True</property>
+                        <property name="receives-default">False</property>
+                        <property name="active">True</property>
+                        <property name="draw-indicator">True</property>
+                        <property name="group">radioTest</property>
+                      </object>
+                      <packing>
+                        <property name="expand">True</property>
+                        <property name="fill">True</property>
+                        <property name="position">2</property>
+                      </packing>
+                    </child>
+                  </object>
+                  <packing>
+                    <property name="expand">False</property>
+                    <property name="fill">True</property>
+                    <property name="position">6</property>
+                  </packing>
+                </child>
+                <child>
+                  <placeholder/>
+                </child>
+                <child>
+                  <object class="GtkBox" id="dragNdropZones">
+                    <property name="visible">True</property>
+                    <property name="can-focus">False</property>
+                    <property name="margin-bottom">5</property>
+                    <child>
+                      <object class="GtkEventBox" id="importZone">
                         <property name="visible">True</property>
                         <property name="can-focus">False</property>
+                        <property name="margin-start">5</property>
                         <child>
                           <object class="GtkBox">
                             <property name="visible">True</property>
@@ -320,7 +396,7 @@
                               <object class="GtkImage">
                                 <property name="visible">True</property>
                                 <property name="can-focus">False</property>
-                                <property name="icon-name">edit-delete</property>
+                                <property name="icon-name">document-open</property>
                                 <property name="icon_size">5</property>
                               </object>
                               <packing>
@@ -333,8 +409,8 @@
                               <object class="GtkLabel">
                                 <property name="visible">True</property>
                                 <property name="can-focus">False</property>
-                                <property name="label" translatable="yes">Supprimer
-banque</property>
+                                <property name="label" translatable="yes">Importer
+banque :</property>
                               </object>
                               <packing>
                                 <property name="expand">False</property>
@@ -344,6 +420,9 @@ banque</property>
                             </child>
                           </object>
                         </child>
+                        <style>
+                          <class name="zone"/>
+                        </style>
                       </object>
                       <packing>
                         <property name="expand">False</property>
@@ -355,6 +434,7 @@ banque</property>
                       <object class="GtkEventBox" id="exportZone">
                         <property name="visible">True</property>
                         <property name="can-focus">False</property>
+                        <property name="margin-start">5</property>
                         <child>
                           <object class="GtkBox">
                             <property name="visible">True</property>
@@ -387,6 +467,9 @@ banque</property>
                             </child>
                           </object>
                         </child>
+                        <style>
+                          <class name="zone"/>
+                        </style>
                       </object>
                       <packing>
                         <property name="expand">False</property>
@@ -395,9 +478,10 @@ banque</property>
                       </packing>
                     </child>
                     <child>
-                      <object class="GtkEventBox" id="importZone">
+                      <object class="GtkEventBox" id="deleteZone">
                         <property name="visible">True</property>
                         <property name="can-focus">False</property>
+                        <property name="margin-start">5</property>
                         <child>
                           <object class="GtkBox">
                             <property name="visible">True</property>
@@ -406,7 +490,7 @@ banque</property>
                               <object class="GtkImage">
                                 <property name="visible">True</property>
                                 <property name="can-focus">False</property>
-                                <property name="icon-name">document-open</property>
+                                <property name="icon-name">edit-delete</property>
                                 <property name="icon_size">5</property>
                               </object>
                               <packing>
@@ -419,8 +503,8 @@ banque</property>
                               <object class="GtkLabel">
                                 <property name="visible">True</property>
                                 <property name="can-focus">False</property>
-                                <property name="label" translatable="yes">Importer
-banque :</property>
+                                <property name="label" translatable="yes">Supprimer
+banque</property>
                               </object>
                               <packing>
                                 <property name="expand">False</property>
@@ -428,20 +512,11 @@ banque :</property>
                                 <property name="position">1</property>
                               </packing>
                             </child>
-                            <child>
-                              <object class="GtkFileChooserButton" id="importBankBtn">
-                                <property name="visible">True</property>
-                                <property name="can-focus">False</property>
-                                <property name="title" translatable="yes"/>
-                              </object>
-                              <packing>
-                                <property name="expand">False</property>
-                                <property name="fill">True</property>
-                                <property name="position">2</property>
-                              </packing>
-                            </child>
                           </object>
                         </child>
+                        <style>
+                          <class name="zone"/>
+                        </style>
                       </object>
                       <packing>
                         <property name="expand">False</property>
@@ -449,11 +524,58 @@ banque :</property>
                         <property name="position">2</property>
                       </packing>
                     </child>
+                    <child>
+                      <object class="GtkEventBox" id="cutZone">
+                        <property name="visible">True</property>
+                        <property name="can-focus">False</property>
+                        <property name="margin-start">5</property>
+                        <child>
+                          <object class="GtkBox">
+                            <property name="visible">True</property>
+                            <property name="can-focus">False</property>
+                            <child>
+                              <object class="GtkImage">
+                                <property name="visible">True</property>
+                                <property name="can-focus">False</property>
+                                <property name="icon-name">edit-cut</property>
+                                <property name="icon_size">5</property>
+                              </object>
+                              <packing>
+                                <property name="expand">False</property>
+                                <property name="fill">True</property>
+                                <property name="position">0</property>
+                              </packing>
+                            </child>
+                            <child>
+                              <object class="GtkLabel">
+                                <property name="visible">True</property>
+                                <property name="can-focus">False</property>
+                                <property name="label" translatable="yes">Découper
+banque</property>
+                              </object>
+                              <packing>
+                                <property name="expand">False</property>
+                                <property name="fill">True</property>
+                                <property name="position">1</property>
+                              </packing>
+                            </child>
+                          </object>
+                        </child>
+                        <style>
+                          <class name="zone"/>
+                        </style>
+                      </object>
+                      <packing>
+                        <property name="expand">False</property>
+                        <property name="fill">True</property>
+                        <property name="position">3</property>
+                      </packing>
+                    </child>
                   </object>
                   <packing>
                     <property name="expand">False</property>
                     <property name="fill">True</property>
-                    <property name="position">6</property>
+                    <property name="position">8</property>
                   </packing>
                 </child>
               </object>
@@ -474,9 +596,6 @@ banque :</property>
           </packing>
         </child>
         <child>
-          <placeholder/>
-        </child>
-        <child>
           <object class="GtkBox" id="banksBox">
             <property name="visible">True</property>
             <property name="can-focus">False</property>
@@ -492,5 +611,10 @@ banque :</property>
         </child>
       </object>
     </child>
+  </object>
+  <object class="GtkImage" id="stoprecord">
+    <property name="visible">True</property>
+    <property name="can-focus">False</property>
+    <property name="icon-name">media-playback-stop</property>
   </object>
 </interface>

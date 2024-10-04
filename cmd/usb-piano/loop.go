@@ -267,6 +267,11 @@ loopchan:
 					number: dst,
 					port2:  state.Stat(dst),
 				}
+				if dst == 0 {
+					state.Lock()
+					state.tempTrack = state.banks[0].Convert()
+					state.Unlock()
+				}
 			case BankClear:
 				src := msg.number
 				if src >= NUM_BANKS {
@@ -307,6 +312,23 @@ loopchan:
 					number: dst,
 					port2:  state.Stat(dst),
 				}
+			case BankCut:
+				src := msg.number
+				if src >= NUM_BANKS {
+					logger.Warn("tried to cut non-existent bank", "bank", src)
+					continue
+				}
+				state.Lock()
+				bank := state.banks[src]
+				cut := bank[state.stepIndex:]
+				state.Unlock()
+				state.Append(0, cut)
+				SinkUI <- Message{
+					ev:     BankLengthNotify,
+					number: 0,
+					port2:  state.Stat(0),
+				}
+				logger.Info("cut bank", "bank", src, "len", len(cut))
 			default:
 				logger.Printf("unknown message type: %#v", msg.ev)
 			}

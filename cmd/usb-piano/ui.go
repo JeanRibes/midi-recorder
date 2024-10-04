@@ -17,6 +17,9 @@ import (
 //go:embed ui.glade
 var gladeUiXML string
 
+//go:embed ui.css
+var stylesheet string
+
 type DragDropSrc byte
 
 const (
@@ -76,6 +79,12 @@ func ui(ctx context.Context, cancel func(), inP, outP int, inL []string, inN []i
 	saveStateBtn := _saveStateBtn.(*gtk.Button)
 	_loadStateBtn, _ := builder.GetObject("loadStateBtn")
 	loadStateBtn := _loadStateBtn.(*gtk.Button)
+	_cutZone, _ := builder.GetObject("cutZone")
+	cutZone := _cutZone.(*gtk.EventBox)
+	_stoprecord, _ := builder.GetObject("stoprecord")
+	stoprecord := _stoprecord.(*gtk.Image)
+	_startrecord, _ := builder.GetObject("startrecord")
+	startrecord := _startrecord.(*gtk.Image)
 
 	_play, _ := builder.GetObject("play")
 	play := _play.(*gtk.Image)
@@ -91,6 +100,7 @@ func ui(ctx context.Context, cancel func(), inP, outP int, inL []string, inN []i
 		MasterControl <- Message{ev: Quit}
 	})
 
+	recordBtn.SetImage(startrecord)
 	recordBtn.Connect("clicked", func() {
 		recordBtn.SetSensitive(false)
 		SinkLoop <- Message{ev: Record}
@@ -237,14 +247,12 @@ func ui(ctx context.Context, cancel func(), inP, outP int, inL []string, inN []i
 		}
 
 		bankBox, _ := gtk.BoxNew(gtk.ORIENTATION_VERTICAL, 5)
-		frame, _ := gtk.FrameNew("")
-		bankBox.SetMarginBottom(5)
 		bankBox.SetMarginStart(5)
-		bankBox.SetMarginEnd(5)
-		bankBox.SetMarginTop(5)
 
-		frame.Add(bankLabel)
-		bankBox.Add(frame)
+		sc, _ := bankLabel.GetStyleContext()
+		sc.AddClass("zone")
+
+		bankBox.Add(bankLabel)
 		bankBox.Add(playBankToggle)
 
 		bankEventBox.Add(bankBox)
@@ -357,6 +365,18 @@ func ui(ctx context.Context, cancel func(), inP, outP int, inL []string, inN []i
 		data.SetData(gdk.SELECTION_PRIMARY, append(binData, []byte(importBankBtn.GetFilename())...))
 	})
 
+	cutZone.DragDestSet(gtk.DEST_DEFAULT_ALL, targetsList, ACTION)
+	cutZone.Connect("drag-data-received", func(self *gtk.EventBox, ctx *gdk.DragContext, x, y int, data *gtk.SelectionData, m int, t uint) {
+		dragType := DragDropSrc(data.GetData()[0])
+		if dragType != Bank {
+			logger.Info("bad drag destination: cutzone")
+			return
+		}
+		src := int(data.GetData()[1])
+		logger.Info("cutting bank to buffer", "bank", src)
+		SinkLoop <- Message{ev: BankCut, number: src}
+	})
+
 	loadStateBtn.Connect("clicked", func() {
 		d, err := gtk.FileChooserDialogNewWith2Buttons("Charger MIDI", mainWin, gtk.FILE_CHOOSER_ACTION_OPEN, "Ouvrir", gtk.RESPONSE_ACCEPT, "Annuler", gtk.RESPONSE_CANCEL)
 		he(err)
@@ -393,6 +413,12 @@ func ui(ctx context.Context, cancel func(), inP, outP int, inL []string, inN []i
 	loadFileBtn2.DragDestSet(gtk.DEST_DEFAULT_ALL, targetsList, gdk.ACTION_COPY)
 	mainBox.Add(loadFileBtn2)*/
 
+	prov, _ := gtk.CssProviderNew()
+	if err := prov.LoadFromData(stylesheet); err != nil {
+		logger.Warn(err)
+	}
+	screen, _ := gdk.ScreenGetDefault()
+	gtk.AddProviderForScreen(screen, prov, 1)
 	mainWin.ShowAll()
 
 	go func() {
@@ -407,13 +433,15 @@ func ui(ctx context.Context, cancel func(), inP, outP int, inL []string, inN []i
 				case Record:
 					if msg.boolean {
 						glib.IdleAdd(func() {
-							recordBtn.SetLabel("Stop Recording (or press sustain)")
+							recordBtn.SetLabel("Arrêter rec")
 							recordBtn.SetSensitive(true)
+							recordBtn.SetImage(stoprecord)
 						})
 					} else {
 						glib.IdleAdd(func() {
 							recordBtn.SetSensitive(true)
-							recordBtn.SetLabel("Record")
+							recordBtn.SetLabel("Enregistrer")
+							recordBtn.SetImage(startrecord)
 						})
 					}
 				case PlayPause:

@@ -19,6 +19,7 @@ const (
 	ResetStep
 	BankImport
 	BankExport
+	BankCut
 )
 
 type Message struct {
