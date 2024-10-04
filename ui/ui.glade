@@ -198,8 +198,8 @@
                         <property name="can-focus">True</property>
                         <property name="receives-default">True</property>
                         <property name="image-position">right</property>
-                        <accelerator key="r" signal="clicked"/>
                         <accelerator key="e" signal="clicked"/>
+                        <accelerator key="r" signal="clicked"/>
                       </object>
                       <packing>
                         <property name="expand">False</property>
@@ -214,8 +214,8 @@
                         <property name="can-focus">True</property>
                         <property name="receives-default">True</property>
                         <property name="image">play</property>
-                        <accelerator key="l" signal="clicked"/>
                         <accelerator key="p" signal="clicked"/>
+                        <accelerator key="l" signal="clicked"/>
                       </object>
                       <packing>
                         <property name="expand">False</property>
@@ -316,64 +316,7 @@
                   </packing>
                 </child>
                 <child>
-                  <object class="GtkButtonBox">
-                    <property name="visible">True</property>
-                    <property name="can-focus">False</property>
-                    <property name="orientation">vertical</property>
-                    <property name="layout-style">start</property>
-                    <child>
-                      <object class="GtkRadioButton" id="radioTest">
-                        <property name="label" translatable="yes">enregistrement vers buffer</property>
-                        <property name="visible">True</property>
-                        <property name="can-focus">True</property>
-                        <property name="receives-default">False</property>
-                        <property name="active">True</property>
-                        <property name="draw-indicator">True</property>
-                      </object>
-                      <packing>
-                        <property name="expand">True</property>
-                        <property name="fill">True</property>
-                        <property name="position">0</property>
-                      </packing>
-                    </child>
-                    <child>
-                      <object class="GtkRadioButton" id="radiobutton1">
-                        <property name="label" translatable="yes">enregistrement step multitrack</property>
-                        <property name="visible">True</property>
-                        <property name="can-focus">True</property>
-                        <property name="receives-default">False</property>
-                        <property name="active">True</property>
-                        <property name="draw-indicator">True</property>
-                        <property name="group">radioTest</property>
-                      </object>
-                      <packing>
-                        <property name="expand">True</property>
-                        <property name="fill">True</property>
-                        <property name="position">1</property>
-                      </packing>
-                    </child>
-                    <child>
-                      <object class="GtkRadioButton" id="radiobutton2">
-                        <property name="label" translatable="yes">repos</property>
-                        <property name="visible">True</property>
-                        <property name="can-focus">True</property>
-                        <property name="receives-default">False</property>
-                        <property name="active">True</property>
-                        <property name="draw-indicator">True</property>
-                        <property name="group">radioTest</property>
-                      </object>
-                      <packing>
-                        <property name="expand">True</property>
-                        <property name="fill">True</property>
-                        <property name="position">2</property>
-                      </packing>
-                    </child>
-                  </object>
-                  <packing>
-                    <property name="expand">False</property>
-                    <property name="fill">True</property>
-                    <property name="position">6</property>
-                  </packing>
+                  <placeholder/>
                 </child>
                 <child>
                   <placeholder/>
@@ -383,6 +326,7 @@
                     <property name="visible">True</property>
                     <property name="can-focus">False</property>
                     <property name="margin-bottom">5</property>
+                    <property name="homogeneous">True</property>
                     <child>
                       <object class="GtkEventBox" id="importZone">
                         <property name="visible">True</property>

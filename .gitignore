@@ -1,3 +1,5 @@
 *.mid
 *.exe
 *.run
+cmd/piano-assistant/piano-assistant
+*~

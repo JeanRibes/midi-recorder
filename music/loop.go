@@ -329,6 +329,10 @@ loopchan:
 				}
 				state.Lock()
 				bank := state.Banks[src]
+				if state.StepIndex >= len(bank) {
+					state.Unlock()
+					continue
+				}
 				cut := bank[state.StepIndex:]
 				state.Unlock()
 				state.Append(0, cut)
