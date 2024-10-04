@@ -9,6 +9,7 @@ import (
 
 	charmlog "github.com/charmbracelet/log"
 
+	. "github.com/JeanRibes/midi/shared"
 	"gitlab.com/gomidi/midi/v2"
 	"gitlab.com/gomidi/midi/v2/drivers"
 	"gitlab.com/gomidi/midi/v2/smf"
@@ -30,7 +31,7 @@ func loop(ctx context.Context, cancel func(), in drivers.In, out drivers.Out, st
 	send, err := midi.SendTo(out)
 	if err != nil {
 		logger.Error(err)
-		SinkUI <- Message{ev: Error, str: "impossible d'ouvrir ce port MIDI en sortie"}
+		SinkUI <- Message{Type: Error, String: "impossible d'ouvrir ce port MIDI en sortie"}
 		cancel()
 		return
 	}
@@ -38,14 +39,13 @@ func loop(ctx context.Context, cancel func(), in drivers.In, out drivers.Out, st
 	he(send(midi.ControlChange(0, 64, 127))) //sustain
 	if in == nil {
 		logger.Error("input port is nil")
-		SinkUI <- Message{ev: Error, str: "impossible d'ouvrir ce port MIDI en entrée"}
+		SinkUI <- Message{Type: Error, String: "impossible d'ouvrir ce port MIDI en entrée"}
 		cancel()
 		return
 	}
 	logger.Debug("input port", "open", in.IsOpen())
 
 	var absmillisec int32 = 0
-	TICKS := smf.New().TimeFormat.(smf.MetricTicks)
 
 	/*recordTrack.SendTo(TICKS, nil, func(m midi.Message, timestampms int32) {
 	d := time.Duration(timestampms) * 10
@@ -97,8 +97,8 @@ func loop(ctx context.Context, cancel func(), in drivers.In, out drivers.Out, st
 				// START record
 				shoudStartRecording = false
 				isRecording = true
-				state.tempTrack = smf.Track{}
-				state.tempTrack.Add(0, smf.MetaTempo(BPM))
+				state.TempTrack = smf.Track{}
+				state.TempTrack.Add(0, smf.MetaTempo(BPM))
 				absmillisec = absms
 				/*main.Add(0, msg)
 				send(msg)
@@ -108,7 +108,7 @@ func loop(ctx context.Context, cancel func(), in drivers.In, out drivers.Out, st
 				deltams := absms - absmillisec
 				absmillisec = absms
 				delta := TICKS.Ticks(BPM, time.Duration(deltams)*time.Millisecond)
-				state.tempTrack.Add(delta, msg)
+				state.TempTrack.Add(delta, msg)
 			}
 			send(msg)
 		case msg.GetControlChange(&ch, &key, &vel):
@@ -116,23 +116,23 @@ func loop(ctx context.Context, cancel func(), in drivers.In, out drivers.Out, st
 				state.ResetStep()
 			} else {
 				if vel == 127 {
-					SinkLoop <- Message{ev: Record}
+					SinkLoop <- Message{Type: Record}
 				}
 			}
 		}
 	})
 	if err != nil {
 		logger.Error(err)
-		SinkUI <- Message{ev: Error, str: "impossible d'écouter ce port MIDI"}
+		SinkUI <- Message{Type: Error, String: "impossible d'écouter ce port MIDI"}
 		cancel()
 		return
 	}
 
 	for bank, leng := range state.Stats() {
 		SinkUI <- Message{
-			ev:     BankLengthNotify,
-			number: bank,
-			port2:  leng,
+			Type:    BankLengthNotify,
+			Number:  bank,
+			Number2: leng,
 		}
 	}
 
@@ -145,28 +145,28 @@ loopchan:
 			logger.Debug("context Done")
 			break loopchan
 		case msg := <-SinkLoop:
-			switch msg.ev {
+			switch msg.Type {
 			case Record:
 				logger.Debug("record SYN")
 				if shoudStartRecording && !isRecording {
 					shoudStartRecording = false
-					SinkUI <- Message{ev: Record, boolean: false}
+					SinkUI <- Message{Type: Record, Boolean: false}
 					logger.Debug("cancel recording")
 					continue
 				}
 				// time.Sleep(time.Second)
 				if isRecording { // STOP RECORD
 					isRecording = false
-					SinkUI <- Message{ev: Record, boolean: false}
+					SinkUI <- Message{Type: Record, Boolean: false}
 					logger.Debug("stop recording")
-					state.tempTrack.Close(0)
+					state.TempTrack.Close(0)
 					state.Clear(0)
 					state.EndRecord()
-					logger.Debug("put recordtrack into bank 0", "len", len(state.banks[0]))
+					logger.Debug("put recordtrack into bank 0", "len", len(state.Banks[0]))
 				} else { //START RECORD
 					shoudStartRecording = true
 					isRecording = false
-					SinkUI <- Message{ev: Record, boolean: true}
+					SinkUI <- Message{Type: Record, Boolean: true}
 					logger.Debug("start recording")
 				}
 			case PlayPause:
@@ -192,26 +192,27 @@ loopchan:
 					playCtx, cancelPlay = context.WithCancel(ctx)
 					//playCtx = context.WithValue(playCtx, charmlog.ContextKey, logger)
 					context.AfterFunc(playCtx, func() {
-						SinkUI <- Message{ev: PlayPause, boolean: false}
+						SinkUI <- Message{Type: PlayPause, Boolean: false}
 						currentlyPlaying = false
 					})
-					SinkUI <- Message{ev: PlayPause, boolean: true}
+					SinkUI <- Message{Type: PlayPause, Boolean: true}
 					go func() {
 						currentlyPlaying = true
 						logger.Info("start playing")
 						//	playTrack(playCtx, recordTrack, TICKS, send)
-						playRTrack(playCtx, state.banks[0], TICKS, send)
+						//PlayRTrack(playCtx, state.banks[0], TICKS, send)
+						PlayTrack(playCtx, state.TempTrack, TICKS, send)
 						logger.Info("finished playing")
 						cancelPlay()
 					}()
 				}
 			case Quantize:
 				go func() {
-					logger.Printf("quantize at %d BPM", msg.number)
+					logger.Printf("quantize at %d BPM", msg.Number)
 					var bf bytes.Buffer
 					tmpFile := smf.New()
-					state.tempTrack[0].Message = smf.MetaTempo(float64(msg.number))
-					tmpFile.Add(state.tempTrack)
+					state.TempTrack[0].Message = smf.MetaTempo(float64(msg.Number))
+					tmpFile.Add(state.TempTrack)
 					_, err = tmpFile.WriteTo(&bf)
 					if err != nil {
 						logger.Error(err)
@@ -219,118 +220,118 @@ loopchan:
 					}
 					he(quantizer.Quantize(&bf, &bf))
 					state.LoadTrack(0, smf.ReadTracksFrom(&bf).SMF().Tracks[0])
-					SinkUI <- Message{ev: Quantize}
+					SinkUI <- Message{Type: Quantize}
 					logger.Debug("quantize done")
 				}()
 			case StepMode:
 				logger.Debug("set steps to", "mode", isSteps)
 				isSteps = !isSteps
-				SinkUI <- Message{ev: StepMode, boolean: isSteps}
+				SinkUI <- Message{Type: StepMode, Boolean: isSteps}
 				state.ResetStep()
 			case ResetStep:
 				state.ResetStep()
 				// load stuff
 			case StateImport:
-				logger.Debug("loading state", "file", msg.str)
-				if err := state.LoadFromFile(msg.str); err != nil {
+				logger.Debug("loading state", "file", msg.String)
+				if err := state.LoadFromFile(msg.String); err != nil {
 					logger.Error(err)
-					SinkUI <- Message{ev: Error, str: err.Error()}
+					SinkUI <- Message{Type: Error, String: err.Error()}
 				}
 			case StateExport:
-				fileName := msg.str
+				fileName := msg.String
 				if !strings.HasSuffix(fileName, ".mid") {
 					fileName += ".mid"
 				}
 				logger.Info("saving to", "filename", fileName)
 				if err := state.SaveToFile(fileName); err != nil {
 					logger.Error(err)
-					SinkUI <- Message{ev: Error, str: err.Error()}
+					SinkUI <- Message{Type: Error, String: err.Error()}
 				}
 			case BankStateChange:
-				state.EnableBank(msg.number, msg.boolean)
-				logger.Printf("set bank %d to state %t", msg.number, msg.boolean)
+				state.EnableBank(msg.Number, msg.Boolean)
+				logger.Printf("set bank %d to state %t", msg.Number, msg.Boolean)
 			case BankDragDrop:
-				src := msg.number
-				dst := msg.port2
+				src := msg.Number
+				dst := msg.Number2
 				if src >= NUM_BANKS || dst >= NUM_BANKS {
 					logger.Warn("tried to append to/from non-existent bank", "src", src, "dst", dst)
 					continue
 				}
 				logger.Printf("append bank %d to bank %d", src, dst)
 
-				l1 := len(state.banks[dst])
+				l1 := len(state.Banks[dst])
 				state.Concat(dst, src)
-				l2 := len(state.banks[dst])
+				l2 := len(state.Banks[dst])
 				logger.Debug("bank %d went from", l1, l2)
 				SinkUI <- Message{
-					ev:     BankLengthNotify,
-					number: dst,
-					port2:  state.Stat(dst),
+					Type:    BankLengthNotify,
+					Number:  dst,
+					Number2: state.Stat(dst),
 				}
 				if dst == 0 {
 					state.Lock()
-					state.tempTrack = state.banks[0].Convert()
+					state.TempTrack = state.Banks[0].Convert()
 					state.Unlock()
 				}
 			case BankClear:
-				src := msg.number
+				src := msg.Number
 				if src >= NUM_BANKS {
 					logger.Warn("tried to delete non-existent bank", "bank", src)
 					continue
 				}
 				state.Clear(src)
 				SinkUI <- Message{
-					ev:     BankLengthNotify,
-					number: src,
-					port2:  state.Stat(src),
+					Type:    BankLengthNotify,
+					Number:  src,
+					Number2: state.Stat(src),
 				}
 			case BankExport:
-				src := msg.number
-				filepath := msg.str
+				src := msg.Number
+				filepath := msg.String
 				state.Lock()
-				track := state.banks[src].Convert()
+				track := state.Banks[src].Convert()
 				state.Unlock()
 				f := smf.New()
 				f.Add(track)
 				if err := f.WriteFile(filepath); err != nil {
 					logger.Error(err)
 					SinkLoop <- Message{
-						ev:  Error,
-						str: err.Error(),
+						Type:   Error,
+						String: err.Error(),
 					}
 				}
 			case BankImport:
-				dst := msg.number
-				filepath := msg.str
+				dst := msg.Number
+				filepath := msg.String
 				tr := smf.ReadTracks(filepath, 1)
 				tracks := tr.SMF().Tracks
 				if len(tracks) > 0 {
 					state.LoadTrack(dst, tracks[0])
 				}
 				SinkUI <- Message{
-					ev:     BankLengthNotify,
-					number: dst,
-					port2:  state.Stat(dst),
+					Type:    BankLengthNotify,
+					Number:  dst,
+					Number2: state.Stat(dst),
 				}
 			case BankCut:
-				src := msg.number
+				src := msg.Number
 				if src >= NUM_BANKS {
 					logger.Warn("tried to cut non-existent bank", "bank", src)
 					continue
 				}
 				state.Lock()
-				bank := state.banks[src]
-				cut := bank[state.stepIndex:]
+				bank := state.Banks[src]
+				cut := bank[state.StepIndex:]
 				state.Unlock()
 				state.Append(0, cut)
 				SinkUI <- Message{
-					ev:     BankLengthNotify,
-					number: 0,
-					port2:  state.Stat(0),
+					Type:    BankLengthNotify,
+					Number:  0,
+					Number2: state.Stat(0),
 				}
 				logger.Info("cut bank", "bank", src, "len", len(cut))
 			default:
-				logger.Printf("unknown message type: %#v", msg.ev)
+				logger.Printf("unknown message type: %#v", msg.Type)
 			}
 		}
 	}
@@ -341,37 +342,4 @@ loopchan:
 	} else {
 		println("already closed")
 	}
-}
-
-func playTrack(ctx context.Context, recordTrack smf.Track, ticks smf.MetricTicks, send func(midi.Message) error) error {
-	absms := uint32(0)
-	logger := charmlog.FromContext(ctx)
-	var ch, key, vel uint8
-	for _, ev := range recordTrack {
-		absms += ev.Delta
-		ev.Message.GetNoteOff(&ch, &key, &vel)
-		if ev.Message.GetNoteOn(&ch, &key, &vel) {
-			logger.Debug("note  on", "key", midi.Note(key), "delta", ev.Delta, "abs", absms)
-		} else {
-			logger.Debug("note off", "key", midi.Note(key), "delta", ev.Delta, "abs", absms)
-		}
-		if smf.Message(ev.Message).IsPlayable() {
-			delta := ticks.Duration(BPM, ev.Delta)
-			/*if ms < 0 {
-				println(ms)
-				continue
-			}*/
-			select {
-			case <-ctx.Done():
-				return nil
-			default:
-				time.Sleep(delta)
-				if err := send(midi.Message(ev.Message)); err != nil {
-					return err
-				}
-				//println(ev.Message.String(), delta.Milliseconds())
-			}
-		}
-	}
-	return nil
 }

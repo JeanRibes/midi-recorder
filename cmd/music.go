@@ -30,7 +30,9 @@ type RecTrack []RecEvent
 
 const DONT_SKIP_NOTES = true
 
-func convert(tr smf.Track) RecTrack {
+const TICKS = smf.MetricTicks(960)
+
+func Convert(tr smf.Track) RecTrack {
 	rt := RecTrack{}
 	if len(tr) <= 2 {
 		return rt
@@ -108,7 +110,11 @@ func (rt *RecTrack) Convert() smf.Track {
 	return tr
 }
 
-func playRTrack(ctx context.Context, recordTrack RecTrack, ticks smf.MetricTicks, send func(midi.Message) error) error {
+func (rt *RecTrack) Play(ctx context.Context, send func(midi.Message) error) error {
+	return PlayRTrack(ctx, *rt, smf.MetricTicks(960), send)
+}
+
+func PlayRTrack(ctx context.Context, recordTrack RecTrack, ticks smf.MetricTicks, send func(midi.Message) error) error {
 	absms := uint32(0)
 	logger := charmlog.FromContext(ctx)
 	logger.Info("play RT")
@@ -126,6 +132,39 @@ func playRTrack(ctx context.Context, recordTrack RecTrack, ticks smf.MetricTicks
 			logger.Debug("note off", "key", ev.note, "delta", ev.delta, "silence", ev.silenceAfter, "abs", absms)
 			send(midi.NoteOff(0, uint8(ev.note)))
 			time.Sleep(ticks.Duration(BPM, ev.silenceAfter))
+		}
+	}
+	return nil
+}
+
+func PlayTrack(ctx context.Context, track smf.Track, ticks smf.MetricTicks, send func(midi.Message) error) error {
+	absms := uint32(0)
+	logger := charmlog.FromContext(ctx)
+	var ch, key, vel uint8
+	for _, ev := range track {
+		absms += ev.Delta
+		ev.Message.GetNoteOff(&ch, &key, &vel)
+		if ev.Message.GetNoteOn(&ch, &key, &vel) {
+			logger.Debug("note  on", "key", midi.Note(key), "delta", ev.Delta, "abs", absms)
+		} else {
+			logger.Debug("note off", "key", midi.Note(key), "delta", ev.Delta, "abs", absms)
+		}
+		if smf.Message(ev.Message).IsPlayable() {
+			delta := ticks.Duration(BPM, ev.Delta)
+			/*if ms < 0 {
+				println(ms)
+				continue
+			}*/
+			select {
+			case <-ctx.Done():
+				return nil
+			default:
+				time.Sleep(delta)
+				if err := send(midi.Message(ev.Message)); err != nil {
+					return err
+				}
+				//println(ev.Message.String(), delta.Milliseconds())
+			}
 		}
 	}
 	return nil

@@ -9,6 +9,7 @@ import (
 
 	charmlog "github.com/charmbracelet/log"
 
+	. "github.com/JeanRibes/midi/shared"
 	"github.com/gotk3/gotk3/gdk"
 	"github.com/gotk3/gotk3/glib"
 	"github.com/gotk3/gotk3/gtk"
@@ -97,17 +98,17 @@ func ui(ctx context.Context, cancel func(), inP, outP int, inL []string, inN []i
 	windestroyhandle := mainWin.Connect("destroy", func() {
 		//cancel()
 		logger.Debug("close win, sending quit event")
-		MasterControl <- Message{ev: Quit}
+		MasterControl <- Message{Type: Quit}
 	})
 
 	recordBtn.SetImage(startrecord)
 	recordBtn.Connect("clicked", func() {
 		recordBtn.SetSensitive(false)
-		SinkLoop <- Message{ev: Record}
+		SinkLoop <- Message{Type: Record}
 	})
 
 	playBtn.Connect("clicked", func() {
-		SinkLoop <- Message{ev: PlayPause}
+		SinkLoop <- Message{Type: PlayPause}
 	})
 
 	quantizeBtn.Connect("clicked", func() {
@@ -118,7 +119,7 @@ func ui(ctx context.Context, cancel func(), inP, outP int, inL []string, inN []i
 		if err == nil {
 			var i int64
 			if i, err = strconv.ParseInt(txt, 10, 32); err == nil {
-				SinkLoop <- Message{ev: Quantize, number: int(i)}
+				SinkLoop <- Message{Type: Quantize, Number: int(i)}
 			} else {
 				logger.Error(err)
 				quantizeBtn.SetSensitive(true)
@@ -130,7 +131,7 @@ func ui(ctx context.Context, cancel func(), inP, outP int, inL []string, inN []i
 	})
 
 	stepsChb.Connect("clicked", func() {
-		SinkLoop <- Message{ev: StepMode}
+		SinkLoop <- Message{Type: StepMode}
 	})
 
 	errors := ""
@@ -184,14 +185,14 @@ func ui(ctx context.Context, cancel func(), inP, outP int, inL []string, inN []i
 		outVal, _ := listOut.GetValue(outIter, 0)
 		outN, _ := outVal.GoValue()
 		MasterControl <- Message{
-			ev:     RestartMIDI,
-			number: inN.(int),
-			port2:  outN.(int),
+			Type:    RestartMIDI,
+			Number:  inN.(int),
+			Number2: outN.(int),
 		}
 	})
 
 	stepReset.Connect("clicked", func() {
-		SinkLoop <- Message{ev: ResetStep}
+		SinkLoop <- Message{Type: ResetStep}
 	})
 
 	targetsList := []gtk.TargetEntry{
@@ -210,7 +211,7 @@ func ui(ctx context.Context, cancel func(), inP, outP int, inL []string, inN []i
 
 		playBankToggle, _ := gtk.CheckButtonNewWithLabel("play")
 		playBankToggle.Connect("toggled", func() {
-			SinkLoop <- Message{ev: BankStateChange, boolean: playBankToggle.GetActive(), number: i}
+			SinkLoop <- Message{Type: BankStateChange, Boolean: playBankToggle.GetActive(), Number: i}
 		})
 
 		banksToggles = append(banksToggles, playBankToggle)
@@ -291,18 +292,18 @@ func ui(ctx context.Context, cancel func(), inP, outP int, inL []string, inN []i
 				logger.Printf("append bank %d to bank %d\n", src, dst)
 
 				SinkLoop <- Message{
-					ev:     BankDragDrop,
-					number: src,
-					port2:  dst,
+					Type:    BankDragDrop,
+					Number:  src,
+					Number2: dst,
 				}
 			case ImportZone:
 				filename := importBankBtn.GetFilename()
 				logger.Info("appending to bank", "index", i, "path", filename)
 				if len(filename) > 0 {
 					SinkLoop <- Message{
-						ev:     BankImport,
-						number: dst,
-						str:    filename,
+						Type:   BankImport,
+						Number: dst,
+						String: filename,
 					}
 				}
 			}
@@ -323,8 +324,8 @@ func ui(ctx context.Context, cancel func(), inP, outP int, inL []string, inN []i
 		src := int(data.GetData()[1])
 		logger.Info("delete bank", "index", src)
 		SinkLoop <- Message{
-			ev:     BankClear,
-			number: src,
+			Type:   BankClear,
+			Number: src,
 		}
 	})
 
@@ -349,9 +350,9 @@ func ui(ctx context.Context, cancel func(), inP, outP int, inL []string, inN []i
 				//SinkLoop <- Message{ev: LoadFromFile, str: d.GetFilename()}
 				logger.Info("exporting bank to file", "bank", src, "path", d.GetFilename())
 				SinkLoop <- Message{
-					ev:     BankExport,
-					number: src,
-					str:    d.GetFilename(),
+					Type:   BankExport,
+					Number: src,
+					String: d.GetFilename(),
 				}
 			}
 			d.Destroy()
@@ -374,7 +375,7 @@ func ui(ctx context.Context, cancel func(), inP, outP int, inL []string, inN []i
 		}
 		src := int(data.GetData()[1])
 		logger.Info("cutting bank to buffer", "bank", src)
-		SinkLoop <- Message{ev: BankCut, number: src}
+		SinkLoop <- Message{Type: BankCut, Number: src}
 	})
 
 	loadStateBtn.Connect("clicked", func() {
@@ -389,7 +390,7 @@ func ui(ctx context.Context, cancel func(), inP, outP int, inL []string, inN []i
 		d.SetKeepBelow(true)
 		response := d.Run()
 		if response == gtk.RESPONSE_ACCEPT {
-			SinkLoop <- Message{ev: StateImport, str: d.GetFilename()}
+			SinkLoop <- Message{Type: StateImport, String: d.GetFilename()}
 		}
 		d.Destroy()
 	})
@@ -401,7 +402,7 @@ func ui(ctx context.Context, cancel func(), inP, outP int, inL []string, inN []i
 		d.SetDoOverwriteConfirmation(true)
 		response := d.Run()
 		if response == gtk.RESPONSE_ACCEPT {
-			SinkLoop <- Message{ev: StateExport, str: d.GetFilename()}
+			SinkLoop <- Message{Type: StateExport, String: d.GetFilename()}
 		}
 		d.Destroy()
 	})
@@ -429,9 +430,9 @@ func ui(ctx context.Context, cancel func(), inP, outP int, inL []string, inN []i
 				gtk.MainQuit()
 				return
 			case msg := <-SinkUI:
-				switch msg.ev {
+				switch msg.Type {
 				case Record:
-					if msg.boolean {
+					if msg.Boolean {
 						glib.IdleAdd(func() {
 							recordBtn.SetLabel("Arrêter rec")
 							recordBtn.SetSensitive(true)
@@ -445,7 +446,7 @@ func ui(ctx context.Context, cancel func(), inP, outP int, inL []string, inN []i
 						})
 					}
 				case PlayPause:
-					if msg.boolean {
+					if msg.Boolean {
 						glib.IdleAdd(func() {
 							playBtn.SetImage(pause)
 						})
@@ -461,17 +462,17 @@ func ui(ctx context.Context, cancel func(), inP, outP int, inL []string, inN []i
 					continue
 				case Error:
 					if len(errors) == 0 {
-						errors = msg.str
+						errors = msg.String
 					} else {
-						errors += "\n\n" + msg.str
+						errors += "\n\n" + msg.String
 					}
 					glib.IdleAdd(func() {
 						errorDialog.FormatSecondaryText(errors)
 						errorDialog.Show()
 					})
 				case BankLengthNotify:
-					bank := msg.number
-					length := msg.port2
+					bank := msg.Number
+					length := msg.Number2
 					glib.IdleAdd(func() {
 						if bank == 0 {
 							banksLabels[bank].SetLabel(fmt.Sprintf("buffer \n%d notes", length))

@@ -7,6 +7,7 @@ import (
 	"os/signal"
 	"time"
 
+	. "github.com/JeanRibes/midi/shared"
 	charmlog "github.com/charmbracelet/log"
 	"gitlab.com/gomidi/midi/v2"
 	"gitlab.com/gomidi/midi/v2/drivers"
@@ -79,16 +80,16 @@ masterLoop:
 		select {
 		case <-signalCh:
 			logger.Debug("\ninterrupt")
-			MasterControl <- Message{ev: Quit}
+			MasterControl <- Message{Type: Quit}
 		case m := <-MasterControl:
-			switch m.ev {
+			switch m.Type {
 			case Quit:
 				logger.Info("shutting down")
 				mainCancel()
 				break masterLoop
 			case RestartMIDI:
-				inN := m.number
-				outN := m.port2
+				inN := m.Number
+				outN := m.Number2
 				logger.Info("reconnect", "input", inN, "output", outN)
 				cancelLoop()
 				for {
