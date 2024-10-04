@@ -2,11 +2,11 @@ package main
 
 import (
 	"context"
+	_ "embed"
 	"fmt"
 	"os"
 	"strconv"
 
-	"github.com/charmbracelet/log"
 	charmlog "github.com/charmbracelet/log"
 
 	"github.com/gotk3/gotk3/gdk"
@@ -14,17 +14,28 @@ import (
 	"github.com/gotk3/gotk3/gtk"
 )
 
+//go:embed ui.glade
+var gladeUiXML string
+
+type DragDropSrc byte
+
+const (
+	Bank DragDropSrc = iota
+	ImportZone
+)
+
 func ui(ctx context.Context, cancel func(), inP, outP int, inL []string, inN []int, outL []string, outN []int) {
 	logger := charmlog.NewWithOptions(os.Stdout, charmlog.Options{
-		Level: charmlog.DebugLevel,
-		//ReportCaller:    true,
+		Level:           charmlog.DebugLevel,
+		ReportCaller:    true,
 		ReportTimestamp: false,
 		Prefix:          "UI",
 	})
 	logger.Info("start")
 	gtk.Init(nil)
 
-	builder, err := gtk.BuilderNewFromFile("ui.glade") //remplacer par du embed
+	//builder, err := gtk.BuilderNewFromFile("ui.glade") //remplacer par du embed
+	builder, err := gtk.BuilderNewFromString(gladeUiXML)
 	he(err)
 
 	_mainWin, _ := builder.GetObject("mainWin")
@@ -33,8 +44,6 @@ func ui(ctx context.Context, cancel func(), inP, outP int, inL []string, inN []i
 	reconnectMidi := _reconnectMidi.(*gtk.Button)
 	_reloadBtn, _ := builder.GetObject("reloadBtn")
 	reloadBtn := _reloadBtn.(*gtk.Button)
-	_saveState, _ := builder.GetObject("saveState")
-	saveState := _saveState.(*gtk.Button)
 	_comboInPorts, _ := builder.GetObject("comboInPorts")
 	comboInPorts := _comboInPorts.(*gtk.ComboBox)
 	_comboOutPorts, _ := builder.GetObject("comboOutPorts")
@@ -57,6 +66,16 @@ func ui(ctx context.Context, cancel func(), inP, outP int, inL []string, inN []i
 	banksBox := _banksBox.(*gtk.Box)
 	_deleteZone, _ := builder.GetObject("deleteZone")
 	deleteZone := _deleteZone.(*gtk.EventBox)
+	_exportZone, _ := builder.GetObject("exportZone")
+	exportZone := _exportZone.(*gtk.EventBox)
+	_importZone, _ := builder.GetObject("importZone")
+	importZone := _importZone.(*gtk.EventBox)
+	_importBankBtn, _ := builder.GetObject("importBankBtn")
+	importBankBtn := _importBankBtn.(*gtk.FileChooserButton)
+	_saveStateBtn, _ := builder.GetObject("saveStateBtn")
+	saveStateBtn := _saveStateBtn.(*gtk.Button)
+	_loadStateBtn, _ := builder.GetObject("loadStateBtn")
+	loadStateBtn := _loadStateBtn.(*gtk.Button)
 
 	_play, _ := builder.GetObject("play")
 	play := _play.(*gtk.Image)
@@ -91,48 +110,17 @@ func ui(ctx context.Context, cancel func(), inP, outP int, inL []string, inN []i
 			if i, err = strconv.ParseInt(txt, 10, 32); err == nil {
 				SinkLoop <- Message{ev: Quantize, number: int(i)}
 			} else {
-				log.Error(err)
+				logger.Error(err)
 				quantizeBtn.SetSensitive(true)
 			}
 		} else {
-			log.Error(err)
+			logger.Error(err)
 			quantizeBtn.SetSensitive(true)
 		}
 	})
 
 	stepsChb.Connect("clicked", func() {
 		SinkLoop <- Message{ev: StepMode}
-	})
-
-	loadFileBtn, _ := gtk.ButtonNewWithLabel("Charger depuis fichier")
-	loadFileBtn.Connect("clicked", func() {
-		d, err := gtk.FileChooserDialogNewWith2Buttons("Charger MIDI", mainWin, gtk.FILE_CHOOSER_ACTION_OPEN, "Ouvrir", gtk.RESPONSE_ACCEPT, "Annuler", gtk.RESPONSE_CANCEL)
-		he(err)
-		filter, _ := gtk.FileFilterNew()
-		filter.AddPattern("*.mid")
-		filter.AddPattern("*.midi")
-		filter.AddMimeType("audio/midi")
-		d.SetFilter(filter)
-		d.SetKeepAbove(false)
-		d.SetKeepBelow(true)
-		response := d.Run()
-		if response == gtk.RESPONSE_ACCEPT {
-			SinkLoop <- Message{ev: LoadFromFile, str: d.GetFilename()}
-		}
-		d.Destroy()
-	})
-
-	//saveFileBtn, _ := gtk.ButtonNewWithLabel("Sauvegarder vers fichier")
-	saveState.Connect("clicked", func() {
-		d, err := gtk.FileChooserDialogNewWith2Buttons("Enregistrer MIDI", mainWin, gtk.FILE_CHOOSER_ACTION_SAVE, "Sauvegarder", gtk.RESPONSE_ACCEPT, "Annuler", gtk.RESPONSE_CANCEL)
-		he(err)
-		d.SetDoOverwriteConfirmation(true)
-		response := d.Run()
-		println(response)
-		if response == gtk.RESPONSE_ACCEPT {
-			SinkLoop <- Message{ev: SaveToFile, str: d.GetFilename()}
-		}
-		d.Destroy()
 	})
 
 	errors := ""
@@ -249,14 +237,17 @@ func ui(ctx context.Context, cancel func(), inP, outP int, inL []string, inN []i
 		}
 
 		bankBox, _ := gtk.BoxNew(gtk.ORIENTATION_VERTICAL, 5)
-		bankBox.Add(bankLabel)
-		bankBox.Add(playBankToggle)
 		frame, _ := gtk.FrameNew("")
-		frame.SetBorderWidth(1)
-		bankBox.SetBorderWidth(5)
+		bankBox.SetMarginBottom(5)
+		bankBox.SetMarginStart(5)
+		bankBox.SetMarginEnd(5)
+		bankBox.SetMarginTop(5)
 
-		frame.Add(bankBox)
-		bankEventBox.Add(frame)
+		frame.Add(bankLabel)
+		bankBox.Add(frame)
+		bankBox.Add(playBankToggle)
+
+		bankEventBox.Add(bankBox)
 
 		banksBox.Add(bankEventBox)
 		/*bankBtn.SetMarginBottom(10)
@@ -277,35 +268,122 @@ func ui(ctx context.Context, cancel func(), inP, outP int, inL []string, inN []i
 			fmt.Printf("drag-drop x=%d,y=%d %s %#v\n", x, y, _btn.GetLabel(), context)
 		})*/
 		bankEventBox.Connect("drag-data-get", func(self *gtk.EventBox, ctx *gdk.DragContext, data *gtk.SelectionData, info, time int) {
-			data.SetData(gdk.SELECTION_PRIMARY, []byte{byte(i)})
+			data.SetData(gdk.SELECTION_PRIMARY, []byte{
+				byte(Bank),
+				byte(i),
+			})
 			//data.SetURIs([]string{"/tmp/test/source.txt"})
 		})
 		bankEventBox.Connect("drag-data-received", func(self *gtk.EventBox, ctx *gdk.DragContext, x, y int, data *gtk.SelectionData, m int, t uint) {
 			dst := i
-			src := int(data.GetData()[0])
-			logger.Printf("append bank %d to bank %d\n", src, dst)
+			dragType := DragDropSrc(data.GetData()[0])
+			switch dragType {
+			case Bank:
+				src := int(data.GetData()[1])
+				logger.Printf("append bank %d to bank %d\n", src, dst)
 
-			SinkLoop <- Message{
-				ev:     BankDragDrop,
-				number: src,
-				port2:  dst,
+				SinkLoop <- Message{
+					ev:     BankDragDrop,
+					number: src,
+					port2:  dst,
+				}
+			case ImportZone:
+				filename := importBankBtn.GetFilename()
+				logger.Info("appending to bank", "index", i, "path", filename)
+				if len(filename) > 0 {
+					SinkLoop <- Message{
+						ev:     BankImport,
+						number: dst,
+						str:    filename,
+					}
+				}
 			}
+
 		})
 		bankEventBox.Connect("drag-data-delete", func(self *gtk.EventBox, ctx *gdk.DragContext) {
 			println("drag-fata-delete")
 			println(bankLabel.GetLabel(), "ACK drag-fata-delete")
 		})
-
 	}
 
 	deleteZone.DragDestSet(gtk.DEST_DEFAULT_ALL, targetsList, ACTION)
 	deleteZone.Connect("drag-data-received", func(self *gtk.EventBox, ctx *gdk.DragContext, x, y int, data *gtk.SelectionData, m int, t uint) {
-		src := int(data.GetData()[0])
+		dragType := DragDropSrc(data.GetData()[0])
+		if dragType != Bank {
+			return
+		}
+		src := int(data.GetData()[1])
 		logger.Info("delete bank", "index", src)
 		SinkLoop <- Message{
 			ev:     BankClear,
 			number: src,
 		}
+	})
+
+	exportZone.DragDestSet(gtk.DEST_DEFAULT_ALL, targetsList, ACTION)
+	exportZone.Connect("drag-data-received", func(self *gtk.EventBox, ctx *gdk.DragContext, x, y int, data *gtk.SelectionData, m int, t uint) {
+		dragType := DragDropSrc(data.GetData()[0])
+		if dragType != Bank {
+			return
+		}
+		src := int(data.GetData()[1])
+		logger.Info("export bank", "src", src)
+		d, _ := gtk.FileChooserDialogNewWith2Buttons("Exporter MIDI", mainWin, gtk.FILE_CHOOSER_ACTION_SAVE, "Exporter", gtk.RESPONSE_ACCEPT, "Annuler", gtk.RESPONSE_CANCEL)
+		filter, _ := gtk.FileFilterNew()
+		filter.AddPattern("*.mid")
+		filter.AddPattern("*.midi")
+		filter.AddMimeType("audio/midi")
+		d.SetFilter(filter)
+		d.SetDoOverwriteConfirmation(true)
+		glib.IdleAdd(func() {
+			response := d.Run()
+			if response == gtk.RESPONSE_ACCEPT {
+				//SinkLoop <- Message{ev: LoadFromFile, str: d.GetFilename()}
+				logger.Info("exporting bank to file", "bank", src, "path", d.GetFilename())
+				SinkLoop <- Message{
+					ev:     BankExport,
+					number: src,
+					str:    d.GetFilename(),
+				}
+			}
+			d.Destroy()
+		})
+	})
+
+	importZone.DragSourceSet(gdk.BUTTON1_MASK, targetsList, ACTION)
+	importZone.Connect("drag-data-get", func(self *gtk.EventBox, ctx *gdk.DragContext, data *gtk.SelectionData, info, time int) {
+		logger.Debug("import drag")
+		binData := []byte{byte(ImportZone)}
+		data.SetData(gdk.SELECTION_PRIMARY, append(binData, []byte(importBankBtn.GetFilename())...))
+	})
+
+	loadStateBtn.Connect("clicked", func() {
+		d, err := gtk.FileChooserDialogNewWith2Buttons("Charger MIDI", mainWin, gtk.FILE_CHOOSER_ACTION_OPEN, "Ouvrir", gtk.RESPONSE_ACCEPT, "Annuler", gtk.RESPONSE_CANCEL)
+		he(err)
+		filter, _ := gtk.FileFilterNew()
+		filter.AddPattern("*.mid")
+		filter.AddPattern("*.midi")
+		filter.AddMimeType("audio/midi")
+		d.SetFilter(filter)
+		d.SetKeepAbove(false)
+		d.SetKeepBelow(true)
+		response := d.Run()
+		if response == gtk.RESPONSE_ACCEPT {
+			SinkLoop <- Message{ev: StateImport, str: d.GetFilename()}
+		}
+		d.Destroy()
+	})
+
+	//saveFileBtn, _ := gtk.ButtonNewWithLabel("Sauvegarder vers fichier")
+	saveStateBtn.Connect("clicked", func() {
+		d, err := gtk.FileChooserDialogNewWith2Buttons("Enregistrer MIDI", mainWin, gtk.FILE_CHOOSER_ACTION_SAVE, "Sauvegarder", gtk.RESPONSE_ACCEPT, "Annuler", gtk.RESPONSE_CANCEL)
+		he(err)
+		d.SetDoOverwriteConfirmation(true)
+		response := d.Run()
+		if response == gtk.RESPONSE_ACCEPT {
+			SinkLoop <- Message{ev: StateExport, str: d.GetFilename()}
+		}
+		d.Destroy()
 	})
 
 	/*loadFileBtn2, _ := gtk.FileChooserButtonNew("ouvrir", gtk.FILE_CHOOSER_ACTION_OPEN) //comme en HTML

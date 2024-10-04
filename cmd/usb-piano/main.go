@@ -17,8 +17,8 @@ var BPM = float64(120)
 
 func main() {
 	logger := charmlog.NewWithOptions(os.Stdout, charmlog.Options{
-		Level: charmlog.DebugLevel,
-		//ReportCaller:    true,
+		Level:           charmlog.DebugLevel,
+		ReportCaller:    true,
 		ReportTimestamp: false,
 		Prefix:          "main",
 	})

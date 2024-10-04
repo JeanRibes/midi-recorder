@@ -3,7 +3,6 @@ package main
 import (
 	"bytes"
 	"context"
-	"log"
 	"os"
 	"strings"
 	"time"
@@ -19,8 +18,8 @@ import (
 func loop(ctx context.Context, cancel func(), in drivers.In, out drivers.Out, state *LoopState) {
 	LoopDied = false
 	logger := charmlog.NewWithOptions(os.Stdout, charmlog.Options{
-		Level: charmlog.DebugLevel,
-		//ReportCaller:    true,
+		Level:           charmlog.DebugLevel,
+		ReportCaller:    true,
 		ReportTimestamp: false,
 		Prefix:          "loop",
 	})
@@ -208,7 +207,7 @@ loopchan:
 				}
 			case Quantize:
 				go func() {
-					log.Printf("quantize at %d BPM\n", msg.number)
+					logger.Printf("quantize at %d BPM", msg.number)
 					var bf bytes.Buffer
 					tmpFile := smf.New()
 					state.tempTrack[0].Message = smf.MetaTempo(float64(msg.number))
@@ -231,45 +230,33 @@ loopchan:
 			case ResetStep:
 				state.ResetStep()
 				// load stuff
-			case LoadFromFile:
-				logger.Debug("loading file", msg.str)
-				file, err := os.Open(msg.str)
-				if err != nil {
+			case StateImport:
+				logger.Debug("loading state", "file", msg.str)
+				if err := state.LoadFromFile(msg.str); err != nil {
 					logger.Error(err)
 					SinkUI <- Message{ev: Error, str: err.Error()}
-					continue
 				}
-				midiFile := smf.ReadTracksFrom(file).SMF()
-				if midiFile == nil || midiFile.NumTracks() < 1 {
-					logger.Error("empty MIDI file")
-					SinkUI <- Message{ev: Error, str: "pas un fichier MIDI"}
-					continue
-				}
-				state.tempTrack = midiFile.Tracks[0]
-				state.Clear(0)
-				state.EndRecord()
-			case SaveToFile:
+			case StateExport:
 				fileName := msg.str
 				if !strings.HasSuffix(fileName, ".mid") {
 					fileName += ".mid"
 				}
 				logger.Info("saving to", "filename", fileName)
-				midiFile := smf.New()
-				state.tempTrack.Close(0)
-				if err := midiFile.Add(state.tempTrack); err != nil {
+				if err := state.SaveToFile(fileName); err != nil {
 					logger.Error(err)
-					continue
-				}
-				if err := midiFile.WriteFile(fileName); err != nil {
-					logger.Error(err)
+					SinkUI <- Message{ev: Error, str: err.Error()}
 				}
 			case BankStateChange:
 				state.EnableBank(msg.number, msg.boolean)
-				logger.Printf("set bank %d to state %t\n", msg.number, msg.boolean)
+				logger.Printf("set bank %d to state %t", msg.number, msg.boolean)
 			case BankDragDrop:
 				src := msg.number
 				dst := msg.port2
-				logger.Printf("append bank %d to bank %d\n", src, dst)
+				if src >= NUM_BANKS || dst >= NUM_BANKS {
+					logger.Warn("tried to append to/from non-existent bank", "src", src, "dst", dst)
+					continue
+				}
+				logger.Printf("append bank %d to bank %d", src, dst)
 
 				l1 := len(state.banks[dst])
 				state.Concat(dst, src)
@@ -282,12 +269,46 @@ loopchan:
 				}
 			case BankClear:
 				src := msg.number
+				if src >= NUM_BANKS {
+					logger.Warn("tried to delete non-existent bank", "bank", src)
+					continue
+				}
 				state.Clear(src)
 				SinkUI <- Message{
 					ev:     BankLengthNotify,
 					number: src,
 					port2:  state.Stat(src),
 				}
+			case BankExport:
+				src := msg.number
+				filepath := msg.str
+				state.Lock()
+				track := state.banks[src].Convert()
+				state.Unlock()
+				f := smf.New()
+				f.Add(track)
+				if err := f.WriteFile(filepath); err != nil {
+					logger.Error(err)
+					SinkLoop <- Message{
+						ev:  Error,
+						str: err.Error(),
+					}
+				}
+			case BankImport:
+				dst := msg.number
+				filepath := msg.str
+				tr := smf.ReadTracks(filepath, 1)
+				tracks := tr.SMF().Tracks
+				if len(tracks) > 0 {
+					state.LoadTrack(dst, tracks[0])
+				}
+				SinkUI <- Message{
+					ev:     BankLengthNotify,
+					number: dst,
+					port2:  state.Stat(dst),
+				}
+			default:
+				logger.Printf("unknown message type: %#v", msg.ev)
 			}
 		}
 	}

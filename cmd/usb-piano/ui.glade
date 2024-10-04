@@ -2,6 +2,11 @@
 <!-- Generated with glade 3.40.0 -->
 <interface>
   <requires lib="gtk+" version="3.24"/>
+  <object class="GtkImage" id="open">
+    <property name="visible">True</property>
+    <property name="can-focus">False</property>
+    <property name="icon-name">document-open</property>
+  </object>
   <object class="GtkImage" id="pause">
     <property name="visible">True</property>
     <property name="can-focus">False</property>
@@ -98,18 +103,7 @@
                       </packing>
                     </child>
                     <child>
-                      <object class="GtkButton" id="saveState">
-                        <property name="label" translatable="yes">Enregistrer session</property>
-                        <property name="visible">True</property>
-                        <property name="can-focus">True</property>
-                        <property name="receives-default">True</property>
-                        <property name="image">save</property>
-                      </object>
-                      <packing>
-                        <property name="expand">False</property>
-                        <property name="fill">True</property>
-                        <property name="position">2</property>
-                      </packing>
+                      <placeholder/>
                     </child>
                   </object>
                   <packing>
@@ -148,6 +142,7 @@
                       <object class="GtkEntry" id="bpmEntry">
                         <property name="visible">True</property>
                         <property name="can-focus">True</property>
+                        <property name="width-chars">6</property>
                         <property name="placeholder-text" translatable="yes">BPM</property>
                         <property name="input-purpose">digits</property>
                       </object>
@@ -161,6 +156,7 @@
                       <object class="GtkEntry" id="ticksEntry">
                         <property name="visible">True</property>
                         <property name="can-focus">True</property>
+                        <property name="width-chars">7</property>
                         <property name="placeholder-text" translatable="yes">Ticks</property>
                         <property name="input-purpose">digits</property>
                       </object>
@@ -203,8 +199,8 @@
                         <property name="receives-default">True</property>
                         <property name="image">record</property>
                         <property name="image-position">right</property>
-                        <accelerator key="e" signal="clicked"/>
                         <accelerator key="r" signal="clicked"/>
+                        <accelerator key="e" signal="clicked"/>
                       </object>
                       <packing>
                         <property name="expand">False</property>
@@ -219,8 +215,8 @@
                         <property name="can-focus">True</property>
                         <property name="receives-default">True</property>
                         <property name="image">play</property>
-                        <accelerator key="p" signal="clicked"/>
                         <accelerator key="l" signal="clicked"/>
+                        <accelerator key="p" signal="clicked"/>
                       </object>
                       <packing>
                         <property name="expand">False</property>
@@ -264,6 +260,48 @@
                     <property name="expand">False</property>
                     <property name="fill">True</property>
                     <property name="position">4</property>
+                  </packing>
+                </child>
+                <child>
+                  <object class="GtkBox">
+                    <property name="visible">True</property>
+                    <property name="can-focus">False</property>
+                    <child>
+                      <object class="GtkButton" id="saveStateBtn">
+                        <property name="label" translatable="yes">Enregistrer session</property>
+                        <property name="visible">True</property>
+                        <property name="can-focus">True</property>
+                        <property name="receives-default">True</property>
+                        <property name="image">save</property>
+                      </object>
+                      <packing>
+                        <property name="expand">False</property>
+                        <property name="fill">True</property>
+                        <property name="position">0</property>
+                      </packing>
+                    </child>
+                    <child>
+                      <object class="GtkButton" id="loadStateBtn">
+                        <property name="label" translatable="yes">Charger session</property>
+                        <property name="visible">True</property>
+                        <property name="can-focus">True</property>
+                        <property name="receives-default">True</property>
+                        <property name="image">open</property>
+                      </object>
+                      <packing>
+                        <property name="expand">False</property>
+                        <property name="fill">True</property>
+                        <property name="position">1</property>
+                      </packing>
+                    </child>
+                    <child>
+                      <placeholder/>
+                    </child>
+                  </object>
+                  <packing>
+                    <property name="expand">False</property>
+                    <property name="fill">True</property>
+                    <property name="position">5</property>
                   </packing>
                 </child>
                 <child>
@@ -357,17 +395,66 @@ banque</property>
                       </packing>
                     </child>
                     <child>
-                      <placeholder/>
+                      <object class="GtkEventBox" id="importZone">
+                        <property name="visible">True</property>
+                        <property name="can-focus">False</property>
+                        <child>
+                          <object class="GtkBox">
+                            <property name="visible">True</property>
+                            <property name="can-focus">False</property>
+                            <child>
+                              <object class="GtkImage">
+                                <property name="visible">True</property>
+                                <property name="can-focus">False</property>
+                                <property name="icon-name">document-open</property>
+                                <property name="icon_size">5</property>
+                              </object>
+                              <packing>
+                                <property name="expand">False</property>
+                                <property name="fill">True</property>
+                                <property name="position">0</property>
+                              </packing>
+                            </child>
+                            <child>
+                              <object class="GtkLabel">
+                                <property name="visible">True</property>
+                                <property name="can-focus">False</property>
+                                <property name="label" translatable="yes">Importer
+banque :</property>
+                              </object>
+                              <packing>
+                                <property name="expand">False</property>
+                                <property name="fill">True</property>
+                                <property name="position">1</property>
+                              </packing>
+                            </child>
+                            <child>
+                              <object class="GtkFileChooserButton" id="importBankBtn">
+                                <property name="visible">True</property>
+                                <property name="can-focus">False</property>
+                                <property name="title" translatable="yes"/>
+                              </object>
+                              <packing>
+                                <property name="expand">False</property>
+                                <property name="fill">True</property>
+                                <property name="position">2</property>
+                              </packing>
+                            </child>
+                          </object>
+                        </child>
+                      </object>
+                      <packing>
+                        <property name="expand">False</property>
+                        <property name="fill">True</property>
+                        <property name="position">2</property>
+                      </packing>
                     </child>
                   </object>
                   <packing>
                     <property name="expand">False</property>
                     <property name="fill">True</property>
-                    <property name="position">5</property>
+                    <property name="position">6</property>
                   </packing>
-                </child>
-                <child>
-                  <placeholder/>
                 </child>
               </object>
               <packing>

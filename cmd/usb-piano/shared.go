@@ -8,8 +8,8 @@ const (
 	PlayPause
 	Quantize
 	StepMode
-	LoadFromFile
-	SaveToFile
+	StateImport
+	StateExport
 	Error
 	RestartMIDI
 	BankStateChange
@@ -17,6 +17,8 @@ const (
 	BankClear
 	BankLengthNotify
 	ResetStep
+	BankImport
+	BankExport
 )
 
 type Message struct {
