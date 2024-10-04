@@ -16,7 +16,7 @@ import (
 	"gitlab.com/gomidi/quantizer/lib/quantizer"
 )
 
-func Run(ctx context.Context, cancel func(), in drivers.In, out drivers.Out, state *LoopState) {
+func Run(ctx context.Context, cancel func(), in drivers.In, out drivers.Out, state *LoopState, SinkUI, SinkLoop, MasterControl chan Message) {
 	LoopDied = false
 	logger := charmlog.NewWithOptions(os.Stdout, charmlog.Options{
 		Level:           charmlog.DebugLevel,

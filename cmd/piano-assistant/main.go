@@ -7,10 +7,10 @@ import (
 	"os/signal"
 	"time"
 
-	. "github.com/JeanRibes/midi/music"
 	music "github.com/JeanRibes/midi/music"
 	. "github.com/JeanRibes/midi/shared"
 	ui "github.com/JeanRibes/midi/ui"
+
 	charmlog "github.com/charmbracelet/log"
 	"gitlab.com/gomidi/midi/v2"
 	"gitlab.com/gomidi/midi/v2/drivers"
@@ -52,7 +52,7 @@ func main() {
 		he(err)
 	}
 
-	state := NewState()
+	state := music.NewState()
 
 	TMPFILE := os.Getenv("XDG_RUNTIME_DIR") + "/usb-piano.mid"
 	if err := state.LoadFromFile(TMPFILE); err != nil {
@@ -74,7 +74,9 @@ func main() {
 	signalCh := make(chan os.Signal, 1)
 	signal.Notify(signalCh, os.Interrupt)
 
-	MasterControl = make(chan Message, 10)
+	MasterControl := make(chan Message, 10)
+	SinkLoop := make(chan Message, 10)
+	SinkUI := make(chan Message, 10)
 
 masterLoop:
 	for {
@@ -127,12 +129,12 @@ masterLoop:
 				inN = in.Number()
 				outN = out.Number()
 			}
-			go ui.Run(uiCtx, cancelUi, inN, outN, inPortsNames, inPortsNumbers, outPortsNames, outPortsNumbers)
+			go ui.Run(uiCtx, cancelUi, inN, outN, inPortsNames, inPortsNumbers, outPortsNames, outPortsNumbers, SinkUI, SinkLoop, MasterControl)
 		case <-loopCtx.Done():
 			loopCtx, cancelLoop = context.WithCancel(mainCtx)
 			logger.Info("mc: restart Loop")
 			if !LoopDied {
-				go music.Run(loopCtx, cancelLoop, in, out, state)
+				go music.Run(loopCtx, cancelLoop, in, out, state, SinkUI, SinkLoop, MasterControl)
 			}
 		}
 	}

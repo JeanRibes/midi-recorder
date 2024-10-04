@@ -28,7 +28,7 @@ const (
 	ImportZone
 )
 
-func Run(ctx context.Context, cancel func(), inP, outP int, inL []string, inN []int, outL []string, outN []int) {
+func Run(ctx context.Context, cancel func(), inP, outP int, inL []string, inN []int, outL []string, outN []int, SinkUI, SinkLoop, MasterControl chan Message) {
 	logger := charmlog.NewWithOptions(os.Stdout, charmlog.Options{
 		Level:           charmlog.DebugLevel,
 		ReportCaller:    true,

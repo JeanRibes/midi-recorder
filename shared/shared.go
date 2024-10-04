@@ -30,15 +30,6 @@ type Message struct {
 	Number2 int
 }
 
-var SinkLoop chan Message
-var SinkUI chan Message
-var MasterControl chan Message
-
-func init() {
-	SinkLoop = make(chan Message, 10)
-	SinkUI = make(chan Message, 10)
-}
-
 var LoopDied bool = false
 var BPM = float64(120)
 
