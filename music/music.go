@@ -1,9 +1,10 @@
-package main
+package music
 
 import (
 	"context"
 	"time"
 
+	. "github.com/JeanRibes/midi/shared"
 	charmlog "github.com/charmbracelet/log"
 	"gitlab.com/gomidi/midi/v2"
 	"gitlab.com/gomidi/midi/v2/smf"

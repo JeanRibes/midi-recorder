@@ -7,14 +7,14 @@ import (
 	"os/signal"
 	"time"
 
+	. "github.com/JeanRibes/midi/music"
 	. "github.com/JeanRibes/midi/shared"
+	ui "github.com/JeanRibes/midi/ui"
 	charmlog "github.com/charmbracelet/log"
 	"gitlab.com/gomidi/midi/v2"
 	"gitlab.com/gomidi/midi/v2/drivers"
 	rtmididrv "gitlab.com/gomidi/midi/v2/drivers/rtmididrv"
 )
-
-var BPM = float64(120)
 
 func main() {
 	logger := charmlog.NewWithOptions(os.Stdout, charmlog.Options{
@@ -126,7 +126,7 @@ masterLoop:
 				inN = in.Number()
 				outN = out.Number()
 			}
-			go ui(uiCtx, cancelUi, inN, outN, inPortsNames, inPortsNumbers, outPortsNames, outPortsNumbers)
+			go ui.Run(uiCtx, cancelUi, inN, outN, inPortsNames, inPortsNumbers, outPortsNames, outPortsNumbers)
 		case <-loopCtx.Done():
 			loopCtx, cancelLoop = context.WithCancel(mainCtx)
 			logger.Info("mc: restart Loop")

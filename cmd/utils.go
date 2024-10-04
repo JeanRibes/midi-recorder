@@ -1,7 +1,6 @@
 package main
 
 import (
-	"github.com/gotk3/gotk3/gtk"
 	"gitlab.com/gomidi/midi/v2/smf"
 )
 
@@ -14,8 +13,4 @@ func trackToSteps(tr smf.Track) []uint8 {
 		}
 	}
 	return steps
-}
-
-func targ(t *gtk.TargetEntry, err error) gtk.TargetEntry {
-	return *t
 }

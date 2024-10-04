@@ -9,6 +9,7 @@ import (
 
 	charmlog "github.com/charmbracelet/log"
 
+	. "github.com/JeanRibes/midi/music"
 	. "github.com/JeanRibes/midi/shared"
 	"gitlab.com/gomidi/midi/v2"
 	"gitlab.com/gomidi/midi/v2/drivers"

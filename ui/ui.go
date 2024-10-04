@@ -1,4 +1,4 @@
-package main
+package ui
 
 import (
 	"context"
@@ -9,6 +9,7 @@ import (
 
 	charmlog "github.com/charmbracelet/log"
 
+	. "github.com/JeanRibes/midi/music"
 	. "github.com/JeanRibes/midi/shared"
 	"github.com/gotk3/gotk3/gdk"
 	"github.com/gotk3/gotk3/glib"
@@ -28,7 +29,7 @@ const (
 	ImportZone
 )
 
-func ui(ctx context.Context, cancel func(), inP, outP int, inL []string, inN []int, outL []string, outN []int) {
+func Run(ctx context.Context, cancel func(), inP, outP int, inL []string, inN []int, outL []string, outN []int) {
 	logger := charmlog.NewWithOptions(os.Stdout, charmlog.Options{
 		Level:           charmlog.DebugLevel,
 		ReportCaller:    true,
@@ -40,7 +41,9 @@ func ui(ctx context.Context, cancel func(), inP, outP int, inL []string, inN []i
 
 	//builder, err := gtk.BuilderNewFromFile("ui.glade") //remplacer par du embed
 	builder, err := gtk.BuilderNewFromString(gladeUiXML)
-	he(err)
+	if err != nil {
+		logger.Fatal(err)
+	}
 
 	_mainWin, _ := builder.GetObject("mainWin")
 	mainWin := _mainWin.(*gtk.Window)
@@ -174,12 +177,9 @@ func ui(ctx context.Context, cancel func(), inP, outP int, inL []string, inN []i
 	comboOutPorts.SetActive(outP)
 
 	reconnectMidi.Connect("clicked", func() {
-		inIter, err := comboInPorts.GetActiveIter()
-		he(err)
-		inVal, err := listIn.GetValue(inIter, 0)
-		he(err)
-		inN, err := inVal.GoValue()
-		he(err)
+		inIter, _ := comboInPorts.GetActiveIter()
+		inVal, _ := listIn.GetValue(inIter, 0)
+		inN, _ := inVal.GoValue()
 
 		outIter, _ := comboOutPorts.GetActiveIter()
 		outVal, _ := listOut.GetValue(outIter, 0)
@@ -379,8 +379,7 @@ func ui(ctx context.Context, cancel func(), inP, outP int, inL []string, inN []i
 	})
 
 	loadStateBtn.Connect("clicked", func() {
-		d, err := gtk.FileChooserDialogNewWith2Buttons("Charger MIDI", mainWin, gtk.FILE_CHOOSER_ACTION_OPEN, "Ouvrir", gtk.RESPONSE_ACCEPT, "Annuler", gtk.RESPONSE_CANCEL)
-		he(err)
+		d, _ := gtk.FileChooserDialogNewWith2Buttons("Charger MIDI", mainWin, gtk.FILE_CHOOSER_ACTION_OPEN, "Ouvrir", gtk.RESPONSE_ACCEPT, "Annuler", gtk.RESPONSE_CANCEL)
 		filter, _ := gtk.FileFilterNew()
 		filter.AddPattern("*.mid")
 		filter.AddPattern("*.midi")
@@ -397,8 +396,7 @@ func ui(ctx context.Context, cancel func(), inP, outP int, inL []string, inN []i
 
 	//saveFileBtn, _ := gtk.ButtonNewWithLabel("Sauvegarder vers fichier")
 	saveStateBtn.Connect("clicked", func() {
-		d, err := gtk.FileChooserDialogNewWith2Buttons("Enregistrer MIDI", mainWin, gtk.FILE_CHOOSER_ACTION_SAVE, "Sauvegarder", gtk.RESPONSE_ACCEPT, "Annuler", gtk.RESPONSE_CANCEL)
-		he(err)
+		d, _ := gtk.FileChooserDialogNewWith2Buttons("Enregistrer MIDI", mainWin, gtk.FILE_CHOOSER_ACTION_SAVE, "Sauvegarder", gtk.RESPONSE_ACCEPT, "Annuler", gtk.RESPONSE_CANCEL)
 		d.SetDoOverwriteConfirmation(true)
 		response := d.Run()
 		if response == gtk.RESPONSE_ACCEPT {
@@ -489,4 +487,8 @@ func ui(ctx context.Context, cancel func(), inP, outP int, inL []string, inN []i
 	mainWin.HandlerDisconnect(windestroyhandle)
 	mainWin.Destroy()
 
+}
+
+func targ(t *gtk.TargetEntry, err error) gtk.TargetEntry {
+	return *t
 }
