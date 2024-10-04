@@ -5,6 +5,7 @@ import (
 	"sync"
 
 	. "github.com/JeanRibes/midi/shared"
+
 	"gitlab.com/gomidi/midi/v2/smf"
 )
 

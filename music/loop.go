@@ -7,9 +7,9 @@ import (
 	"strings"
 	"time"
 
-	charmlog "github.com/charmbracelet/log"
-
 	. "github.com/JeanRibes/midi/shared"
+
+	charmlog "github.com/charmbracelet/log"
 	"gitlab.com/gomidi/midi/v2"
 	"gitlab.com/gomidi/midi/v2/drivers"
 	"gitlab.com/gomidi/midi/v2/smf"

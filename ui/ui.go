@@ -7,9 +7,9 @@ import (
 	"os"
 	"strconv"
 
-	charmlog "github.com/charmbracelet/log"
-
 	. "github.com/JeanRibes/midi/shared"
+
+	charmlog "github.com/charmbracelet/log"
 	"github.com/gotk3/gotk3/gdk"
 	"github.com/gotk3/gotk3/glib"
 	"github.com/gotk3/gotk3/gtk"
