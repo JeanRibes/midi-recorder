@@ -93,6 +93,7 @@ func (s *LoopState) EnableBank(bank int, enable bool) bool {
 
 func (s *LoopState) SaveToFile(filepath string) (errs error) {
 	f := smf.New()
+	f.TimeFormat = TICKS
 	if err := f.Add(s.TempTrack); err != nil {
 		errs = errors.Join(errs, err)
 	}

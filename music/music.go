@@ -97,23 +97,20 @@ func Convert(tr smf.Track) RecTrack {
 	return rt
 }
 
-func (rt *RecTrack) Convert() smf.Track {
+func (rt RecTrack) Convert() smf.Track {
 	tr := smf.Track{}
-	tr.Add(0, smf.MetaTempo(BPM))
-	absTicks := uint32(0)
-	for _, ev := range *rt {
-		absTicks += ev.delta
-		tr.Add(absTicks, ev.Message(true))
-		absTicks += ev.duration
-		tr.Add(absTicks, ev.Message(false))
-		absTicks += ev.silenceAfter
+	prevDelta := uint32(0)
+	for _, ev := range rt {
+		tr.Add(prevDelta, ev.Message(true))
+		tr.Add(ev.duration, ev.Message(false))
+		prevDelta = ev.silenceAfter
 	}
-	tr.Close(absTicks)
+	tr.Close(0)
 	return tr
 }
 
-func (rt *RecTrack) Play(ctx context.Context, send func(midi.Message) error) error {
-	return PlayRTrack(ctx, *rt, smf.MetricTicks(960), send)
+func (rt RecTrack) Play(ctx context.Context, send func(midi.Message) error) error {
+	return PlayRTrack(ctx, rt, TICKS, send)
 }
 
 func PlayRTrack(ctx context.Context, recordTrack RecTrack, ticks smf.MetricTicks, send func(midi.Message) error) error {
@@ -152,20 +149,14 @@ func PlayTrack(ctx context.Context, track smf.Track, ticks smf.MetricTicks, send
 			logger.Debug("note off", "key", midi.Note(key), "delta", ev.Delta, "abs", absms)
 		}
 		if smf.Message(ev.Message).IsPlayable() {
-			delta := ticks.Duration(BPM, ev.Delta)
-			/*if ms < 0 {
-				println(ms)
-				continue
-			}*/
 			select {
 			case <-ctx.Done():
 				return nil
 			default:
-				time.Sleep(delta)
+				time.Sleep(ticks.Duration(BPM, ev.Delta))
 				if err := send(midi.Message(ev.Message)); err != nil {
 					return err
 				}
-				//println(ev.Message.String(), delta.Milliseconds())
 			}
 		}
 	}

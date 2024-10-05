@@ -168,6 +168,11 @@ loopchan:
 					state.Clear(0)
 					state.EndRecord()
 					logger.Debug("put recordtrack into bank 0", "len", len(state.Banks[0]))
+					SinkUI <- Message{
+						Type:    BankLengthNotify,
+						Number:  0,
+						Number2: state.Stat(0),
+					}
 				} else { //START RECORD
 					shoudStartRecording = true
 					isRecording = false
@@ -195,7 +200,7 @@ loopchan:
 					logger.Info("stop playing")
 				} else {
 					playCtx, cancelPlay = context.WithCancel(ctx)
-					//playCtx = context.WithValue(playCtx, charmlog.ContextKey, logger)
+					playCtx = context.WithValue(playCtx, charmlog.ContextKey, logger)
 					context.AfterFunc(playCtx, func() {
 						SinkUI <- Message{Type: PlayPause, Boolean: false}
 						currentlyPlaying = false
@@ -204,8 +209,7 @@ loopchan:
 					go func() {
 						currentlyPlaying = true
 						logger.Info("start playing")
-						//	playTrack(playCtx, recordTrack, TICKS, send)
-						//PlayRTrack(playCtx, state.banks[0], TICKS, send)
+						//state.Banks[0].Play(playCtx, send)
 						PlayTrack(playCtx, state.TempTrack, TICKS, send)
 						logger.Info("finished playing")
 						cancelPlay()

@@ -4,7 +4,7 @@
         {
             "label": "Build and run",
             "type": "shell",
-            "command": "go run midi/cmd/usb-piano",
+            "command": "go run ./cmd/piano-assistant",
             "group": {
                 "kind": "build",
                 "isDefault": true
