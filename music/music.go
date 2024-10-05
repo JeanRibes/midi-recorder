@@ -120,6 +120,7 @@ func PlayRTrack(ctx context.Context, recordTrack RecTrack, ticks smf.MetricTicks
 	for _, ev := range recordTrack {
 		select {
 		case <-ctx.Done():
+			println("play: cancelled")
 			return nil
 		default:
 			absms += ev.duration
@@ -161,4 +162,20 @@ func PlayTrack(ctx context.Context, track smf.Track, ticks smf.MetricTicks, send
 		}
 	}
 	return nil
+}
+
+func Scheduler(send func(midi.Message) error) func(midi.Message) error {
+	queue := make(chan midi.Message, 10)
+
+	go func() {
+		for {
+			msg := <-queue
+			send(msg)
+		}
+	}()
+
+	return func(m midi.Message) error {
+		queue <- m
+		return nil
+	}
 }

@@ -1,12 +1,15 @@
 package music
 
 import (
+	"context"
 	"errors"
 	"sync"
 
 	. "github.com/JeanRibes/midi/shared"
 
+	"gitlab.com/gomidi/midi/v2"
 	"gitlab.com/gomidi/midi/v2/smf"
+	"golang.org/x/sync/semaphore"
 )
 
 type LoopState struct {
@@ -154,3 +157,32 @@ func init() {
 	smf.MetaText("test")
 }
 */
+
+func (s *LoopState) Play(ctx context.Context, send func(midi.Message) error) {
+	numBanks := 0
+
+	sem := semaphore.NewWeighted(NUM_BANKS)
+	sem.Acquire(context.TODO(), NUM_BANKS)
+	for i, enable := range s.playBank {
+		if enable {
+			go func() {
+				println("play", i)
+				s.Banks[i].Play(ctx, send)
+				println("done")
+				sem.Release(1)
+				println("released", i)
+			}()
+			numBanks += 1
+		}
+	}
+	if numBanks == 0 {
+		PlayTrack(ctx, s.TempTrack, TICKS, send)
+	} else {
+		println("acquire")
+		if err := sem.Acquire(ctx, int64(numBanks)); err != nil {
+			println("erreur semathpre", err.Error())
+		}
+		println("ok")
+	}
+	println("finieshed play")
+}

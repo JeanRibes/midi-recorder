@@ -9,6 +9,7 @@ require (
 	github.com/gotk3/gotk3 v0.6.5-0.20240618185848-ff349ae13f56
 	gitlab.com/gomidi/midi/v2 v2.2.10
 	gitlab.com/gomidi/quantizer v0.0.5
+	golang.org/x/sync v0.8.0
 )
 
 require (

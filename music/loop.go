@@ -84,7 +84,12 @@ func Run(ctx context.Context, cancel func(), in drivers.In, out drivers.Out, sta
 				cnt := 0
 				for _, ev := range lastOnStep {
 					if ev != nil {
-						send(ev.Message(on))
+						//send(ev.Message(on))
+						if on {
+							send(midi.NoteOn(ch, uint8(ev.note), vel))
+						} else {
+							send(midi.NoteOff(ch, uint8(ev.note)))
+						}
 						cnt += 1
 					}
 				}
@@ -120,9 +125,7 @@ func Run(ctx context.Context, cancel func(), in drivers.In, out drivers.Out, sta
 			if isSteps {
 				state.ResetStep()
 			} else {
-				if vel == 127 {
-					SinkLoop <- Message{Type: Record}
-				}
+				SinkLoop <- Message{Type: StepMode, Boolean: false}
 			}
 		}
 	})
@@ -140,6 +143,8 @@ func Run(ctx context.Context, cancel func(), in drivers.In, out drivers.Out, sta
 			Number2: leng,
 		}
 	}
+
+	buffered_send := Scheduler(send) // pour les erreurs MIDI
 
 	LoopDied = true
 	currentlyPlaying := false
@@ -180,37 +185,22 @@ loopchan:
 					logger.Debug("start recording")
 				}
 			case PlayPause:
-				/*go func() {
-					logger.Debug("start play")
-					var bf bytes.Buffer
-					tmpFile := smf.New()
-					tmpFile.Add(recordTrack)
-					_, err = tmpFile.WriteTo(&bf)
-					if err != nil {
-						logger.Error(err)
-						return
-					}
-					player := smf.ReadTracksFrom(&bf)
-					he(player.Play(out))
-					SinkUI <- Message{ev: PlayPause}
-					logger.Debug("end play")
-				}()*/
 				if currentlyPlaying {
 					cancelPlay()
 					logger.Info("stop playing")
 				} else {
 					playCtx, cancelPlay = context.WithCancel(ctx)
-					playCtx = context.WithValue(playCtx, charmlog.ContextKey, logger)
+					//playCtx = context.WithValue(playCtx, charmlog.ContextKey, logger)
 					context.AfterFunc(playCtx, func() {
 						SinkUI <- Message{Type: PlayPause, Boolean: false}
 						currentlyPlaying = false
 					})
 					SinkUI <- Message{Type: PlayPause, Boolean: true}
+					currentlyPlaying = true
+					logger.Info("start playing")
+					//PlayTrack(playCtx, state.TempTrack, TICKS, send)
 					go func() {
-						currentlyPlaying = true
-						logger.Info("start playing")
-						//state.Banks[0].Play(playCtx, send)
-						PlayTrack(playCtx, state.TempTrack, TICKS, send)
+						state.Play(playCtx, buffered_send)
 						logger.Info("finished playing")
 						cancelPlay()
 					}()
@@ -300,6 +290,9 @@ loopchan:
 			case BankExport:
 				src := msg.Number
 				filepath := msg.String
+				if !strings.HasSuffix(filepath, ".mid") {
+					filepath += ".mid"
+				}
 				state.Lock()
 				track := state.Banks[src].Convert()
 				state.Unlock()

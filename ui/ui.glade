@@ -193,13 +193,13 @@
                     <property name="can-focus">False</property>
                     <child>
                       <object class="GtkButton" id="recordBtn">
-                        <property name="label" translatable="yes">Enregistrer</property>
+                        <property name="label" translatable="yes">Enregistrer (R)</property>
                         <property name="visible">True</property>
                         <property name="can-focus">True</property>
                         <property name="receives-default">True</property>
                         <property name="image-position">right</property>
-                        <accelerator key="e" signal="clicked"/>
                         <accelerator key="r" signal="clicked"/>
+                        <accelerator key="e" signal="clicked"/>
                       </object>
                       <packing>
                         <property name="expand">False</property>
@@ -209,13 +209,13 @@
                     </child>
                     <child>
                       <object class="GtkButton" id="playBtn">
-                        <property name="label" translatable="yes">Lire</property>
+                        <property name="label" translatable="yes">Lire (L)</property>
                         <property name="visible">True</property>
                         <property name="can-focus">True</property>
                         <property name="receives-default">True</property>
                         <property name="image">play</property>
-                        <accelerator key="p" signal="clicked"/>
                         <accelerator key="l" signal="clicked"/>
+                        <accelerator key="p" signal="clicked"/>
                       </object>
                       <packing>
                         <property name="expand">False</property>
@@ -225,7 +225,7 @@
                     </child>
                     <child>
                       <object class="GtkCheckButton" id="stepsChb">
-                        <property name="label" translatable="yes">Mode pas à pas</property>
+                        <property name="label" translatable="yes">Mode pas à pas (S) </property>
                         <property name="visible">True</property>
                         <property name="can-focus">True</property>
                         <property name="receives-default">False</property>
@@ -241,7 +241,7 @@
                     </child>
                     <child>
                       <object class="GtkButton" id="stepReset">
-                        <property name="label" translatable="yes">Retour</property>
+                        <property name="label" translatable="yes">Retour (B)</property>
                         <property name="visible">True</property>
                         <property name="can-focus">True</property>
                         <property name="receives-default">True</property>
@@ -279,7 +279,7 @@
                     </child>
                     <child>
                       <object class="GtkButton" id="saveStateBtn">
-                        <property name="label" translatable="yes">Enregistrer session</property>
+                        <property name="label" translatable="yes">Sauvegarder session</property>
                         <property name="visible">True</property>
                         <property name="can-focus">True</property>
                         <property name="receives-default">True</property>
