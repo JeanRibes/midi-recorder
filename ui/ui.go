@@ -88,6 +88,8 @@ func Run(ctx context.Context, cancel func(), inP, outP int, inL []string, inN []
 	stoprecord := _stoprecord.(*gtk.Image)
 	_startrecord, _ := builder.GetObject("startrecord")
 	startrecord := _startrecord.(*gtk.Image)
+	_undoNote, _ := builder.GetObject("undoNote")
+	undoNote := _undoNote.(*gtk.Button)
 
 	_play, _ := builder.GetObject("play")
 	play := _play.(*gtk.Image)
@@ -402,6 +404,10 @@ func Run(ctx context.Context, cancel func(), inP, outP int, inL []string, inN []
 			SinkLoop <- Message{Type: StateExport, String: d.GetFilename()}
 		}
 		d.Destroy()
+	})
+
+	undoNote.Connect("clicked", func() {
+		SinkLoop <- Message{Type: NoteUndo}
 	})
 
 	/*loadFileBtn2, _ := gtk.FileChooserButtonNew("ouvrir", gtk.FILE_CHOOSER_ACTION_OPEN) //comme en HTML

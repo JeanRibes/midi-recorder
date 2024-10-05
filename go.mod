@@ -11,6 +11,7 @@ require (
 	gitlab.com/gomidi/quantizer v0.0.5
 	golang.org/x/sync v0.8.0
 )
+// https://pkg.go.dev/github.com/go-audio/music/theory#section-readme
 
 require (
 	github.com/aymanbagabas/go-osc52/v2 v2.0.1 // indirect

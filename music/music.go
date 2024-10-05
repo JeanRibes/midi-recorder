@@ -179,3 +179,5 @@ func Scheduler(send func(midi.Message) error) func(midi.Message) error {
 		return nil
 	}
 }
+
+// https://pkg.go.dev/github.com/go-audio/music/theory#section-readme

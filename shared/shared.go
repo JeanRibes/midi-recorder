@@ -20,6 +20,7 @@ const (
 	BankImport
 	BankExport
 	BankCut
+	NoteUndo
 )
 
 type Message struct {

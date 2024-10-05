@@ -170,7 +170,7 @@ loopchan:
 					SinkUI <- Message{Type: Record, Boolean: false}
 					logger.Debug("stop recording")
 					state.TempTrack.Close(0)
-					state.Clear(0)
+					//state.Clear(0)
 					state.EndRecord()
 					logger.Debug("put recordtrack into bank 0", "len", len(state.Banks[0]))
 					SinkUI <- Message{
@@ -339,6 +339,14 @@ loopchan:
 					Number2: state.Stat(0),
 				}
 				logger.Info("cut bank", "bank", src, "len", len(cut))
+			case NoteUndo:
+				if isRecording {
+					l := len(state.TempTrack)
+					if l > 2 {
+						state.TempTrack = state.TempTrack[0 : l-2] // on supprimes les 2 derniers messages: noteOn & noteOff
+					}
+					logger.Info("suppression de la dernière note", "avant", l, "après", len(state.TempTrack))
+				}
 			default:
 				logger.Printf("unknown message type: %#v", msg.Type)
 			}
