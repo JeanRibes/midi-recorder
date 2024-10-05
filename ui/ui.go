@@ -1,5 +1,7 @@
 package ui
 
+//go:generate python3 genGoGlade.py
+
 import (
 	"context"
 	_ "embed"
@@ -43,58 +45,7 @@ func Run(ctx context.Context, cancel func(), inP, outP int, inL []string, inN []
 	if err != nil {
 		logger.Fatal(err)
 	}
-
-	_mainWin, _ := builder.GetObject("mainWin")
-	mainWin := _mainWin.(*gtk.Window)
-	_reconnectMidi, _ := builder.GetObject("reconnectMidi")
-	reconnectMidi := _reconnectMidi.(*gtk.Button)
-	_reloadBtn, _ := builder.GetObject("reloadBtn")
-	reloadBtn := _reloadBtn.(*gtk.Button)
-	_comboInPorts, _ := builder.GetObject("comboInPorts")
-	comboInPorts := _comboInPorts.(*gtk.ComboBox)
-	_comboOutPorts, _ := builder.GetObject("comboOutPorts")
-	comboOutPorts := _comboOutPorts.(*gtk.ComboBox)
-	_bpmEntry, _ := builder.GetObject("bpmEntry")
-	bpmEntry := _bpmEntry.(*gtk.Entry)
-	_ticksEntry, _ := builder.GetObject("ticksEntry")
-	ticksEntry := _ticksEntry.(*gtk.Entry)
-	_quantizeBtn, _ := builder.GetObject("quantizeBtn")
-	quantizeBtn := _quantizeBtn.(*gtk.Button)
-	_recordBtn, _ := builder.GetObject("recordBtn")
-	recordBtn := _recordBtn.(*gtk.Button)
-	_playBtn, _ := builder.GetObject("playBtn")
-	playBtn := _playBtn.(*gtk.Button)
-	_stepsChb, _ := builder.GetObject("stepsChb")
-	stepsChb := _stepsChb.(*gtk.CheckButton)
-	_stepReset, _ := builder.GetObject("stepReset")
-	stepReset := _stepReset.(*gtk.Button)
-	_banksBox, _ := builder.GetObject("banksBox")
-	banksBox := _banksBox.(*gtk.Box)
-	_deleteZone, _ := builder.GetObject("deleteZone")
-	deleteZone := _deleteZone.(*gtk.EventBox)
-	_exportZone, _ := builder.GetObject("exportZone")
-	exportZone := _exportZone.(*gtk.EventBox)
-	_importZone, _ := builder.GetObject("importZone")
-	importZone := _importZone.(*gtk.EventBox)
-	_importBankBtn, _ := builder.GetObject("importBankBtn")
-	importBankBtn := _importBankBtn.(*gtk.FileChooserButton)
-	_saveStateBtn, _ := builder.GetObject("saveStateBtn")
-	saveStateBtn := _saveStateBtn.(*gtk.Button)
-	_loadStateBtn, _ := builder.GetObject("loadStateBtn")
-	loadStateBtn := _loadStateBtn.(*gtk.Button)
-	_cutZone, _ := builder.GetObject("cutZone")
-	cutZone := _cutZone.(*gtk.EventBox)
-	_stoprecord, _ := builder.GetObject("stoprecord")
-	stoprecord := _stoprecord.(*gtk.Image)
-	_startrecord, _ := builder.GetObject("startrecord")
-	startrecord := _startrecord.(*gtk.Image)
-	_undoNote, _ := builder.GetObject("undoNote")
-	undoNote := _undoNote.(*gtk.Button)
-
-	_play, _ := builder.GetObject("play")
-	play := _play.(*gtk.Image)
-	_pause, _ := builder.GetObject("pause")
-	pause := _pause.(*gtk.Image)
+	loadUI(builder)
 
 	if err != nil {
 		logger.Error("Unable to create window:", err)
@@ -105,7 +56,7 @@ func Run(ctx context.Context, cancel func(), inP, outP int, inL []string, inN []
 		MasterControl <- Message{Type: Quit}
 	})
 
-	recordBtn.SetImage(startrecord)
+	recordBtn.SetImage(startrecordImg)
 	recordBtn.Connect("clicked", func() {
 		recordBtn.SetSensitive(false)
 		SinkLoop <- Message{Type: Record}
@@ -439,23 +390,23 @@ func Run(ctx context.Context, cancel func(), inP, outP int, inL []string, inN []
 						glib.IdleAdd(func() {
 							recordBtn.SetLabel("Arrêter rec")
 							recordBtn.SetSensitive(true)
-							recordBtn.SetImage(stoprecord)
+							recordBtn.SetImage(stoprecordImg)
 						})
 					} else {
 						glib.IdleAdd(func() {
 							recordBtn.SetSensitive(true)
 							recordBtn.SetLabel("Enregistrer")
-							recordBtn.SetImage(startrecord)
+							recordBtn.SetImage(startrecordImg)
 						})
 					}
 				case PlayPause:
 					if msg.Boolean {
 						glib.IdleAdd(func() {
-							playBtn.SetImage(pause)
+							playBtn.SetImage(pauseimg)
 						})
 					} else {
 						glib.IdleAdd(func() {
-							playBtn.SetImage(play)
+							playBtn.SetImage(playBtn)
 						})
 					}
 				case Quantize:

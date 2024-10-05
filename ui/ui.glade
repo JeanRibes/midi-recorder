@@ -2,62 +2,62 @@
 <!-- Generated with glade 3.40.0 -->
 <interface>
   <requires lib="gtk+" version="3.24"/>
-  <object class="GtkImage" id="open">
+  <object class="GtkImage" id="openImg">
     <property name="visible">True</property>
     <property name="can-focus">False</property>
     <property name="icon-name">document-open</property>
   </object>
-  <object class="GtkImage" id="pause">
+  <object class="GtkImage" id="pauseimg">
     <property name="visible">True</property>
     <property name="can-focus">False</property>
     <property name="icon-name">media-playback-pause</property>
   </object>
-  <object class="GtkImage" id="play">
+  <object class="GtkImage" id="playImg">
     <property name="visible">True</property>
     <property name="can-focus">False</property>
     <property name="icon-name">media-playback-start</property>
   </object>
-  <object class="GtkImage" id="quantize">
+  <object class="GtkImage" id="quantizeImg">
     <property name="visible">True</property>
     <property name="can-focus">False</property>
     <property name="icon-name">view-sort-ascending</property>
   </object>
-  <object class="GtkImage" id="reconnect">
+  <object class="GtkImage" id="reconnectImg">
     <property name="visible">True</property>
     <property name="can-focus">False</property>
     <property name="stock">gtk-disconnect</property>
   </object>
-  <object class="GtkImage" id="refresh">
+  <object class="GtkImage" id="refreshImg">
     <property name="visible">True</property>
     <property name="can-focus">False</property>
     <property name="stock">gtk-refresh</property>
   </object>
-  <object class="GtkImage" id="retour">
+  <object class="GtkImage" id="retourImt">
     <property name="visible">True</property>
     <property name="can-focus">False</property>
     <property name="icon-name">media-skip-backward</property>
   </object>
-  <object class="GtkImage" id="save">
+  <object class="GtkImage" id="saveImg">
     <property name="visible">True</property>
     <property name="can-focus">False</property>
     <property name="stock">gtk-save</property>
   </object>
-  <object class="GtkImage" id="startrecord">
+  <object class="GtkImage" id="startrecordImg">
     <property name="visible">True</property>
     <property name="can-focus">False</property>
     <property name="stock">gtk-media-record</property>
   </object>
-  <object class="GtkImage" id="steps">
+  <object class="GtkImage" id="stepsImg">
     <property name="visible">True</property>
     <property name="can-focus">False</property>
     <property name="icon-name">media-seek-forward</property>
   </object>
-  <object class="GtkImage" id="stoprecord">
+  <object class="GtkImage" id="stoprecordImg">
     <property name="visible">True</property>
     <property name="can-focus">False</property>
     <property name="icon-name">media-playback-stop</property>
   </object>
-  <object class="GtkImage" id="undo">
+  <object class="GtkImage" id="undoImg">
     <property name="visible">True</property>
     <property name="can-focus">False</property>
     <property name="icon-name">edit-undo</property>
@@ -90,7 +90,7 @@
                         <property name="visible">True</property>
                         <property name="can-focus">True</property>
                         <property name="receives-default">True</property>
-                        <property name="image">reconnect</property>
+                        <property name="image">reconnectImg</property>
                       </object>
                       <packing>
                         <property name="expand">False</property>
@@ -104,7 +104,7 @@
                         <property name="visible">True</property>
                         <property name="can-focus">True</property>
                         <property name="receives-default">True</property>
-                        <property name="image">refresh</property>
+                        <property name="image">refreshImg</property>
                       </object>
                       <packing>
                         <property name="expand">False</property>
@@ -182,7 +182,7 @@
                         <property name="visible">True</property>
                         <property name="can-focus">True</property>
                         <property name="receives-default">True</property>
-                        <property name="image">quantize</property>
+                        <property name="image">quantizeImg</property>
                       </object>
                       <packing>
                         <property name="expand">False</property>
@@ -219,7 +219,7 @@
                         <property name="visible">True</property>
                         <property name="can-focus">True</property>
                         <property name="receives-default">True</property>
-                        <property name="image">save</property>
+                        <property name="image">saveImg</property>
                       </object>
                       <packing>
                         <property name="expand">False</property>
@@ -233,7 +233,7 @@
                         <property name="visible">True</property>
                         <property name="can-focus">True</property>
                         <property name="receives-default">True</property>
-                        <property name="image">open</property>
+                        <property name="image">openImg</property>
                       </object>
                       <packing>
                         <property name="expand">False</property>
@@ -261,7 +261,7 @@
                         <property name="visible">True</property>
                         <property name="can-focus">True</property>
                         <property name="receives-default">True</property>
-                        <property name="image">play</property>
+                        <property name="image">playImg</property>
                         <accelerator key="p" signal="clicked"/>
                         <accelerator key="l" signal="clicked"/>
                       </object>
@@ -277,7 +277,7 @@
                         <property name="visible">True</property>
                         <property name="can-focus">True</property>
                         <property name="receives-default">False</property>
-                        <property name="image">steps</property>
+                        <property name="image">stepsImg</property>
                         <property name="draw-indicator">True</property>
                         <accelerator key="s" signal="clicked"/>
                       </object>
@@ -293,7 +293,7 @@
                         <property name="visible">True</property>
                         <property name="can-focus">True</property>
                         <property name="receives-default">True</property>
-                        <property name="image">retour</property>
+                        <property name="image">retourImt</property>
                         <accelerator key="b" signal="clicked"/>
                       </object>
                       <packing>
@@ -335,7 +335,7 @@
                         <property name="visible">True</property>
                         <property name="can-focus">True</property>
                         <property name="receives-default">True</property>
-                        <property name="image">undo</property>
+                        <property name="image">undoImg</property>
                         <accelerator key="z" signal="clicked" modifiers="GDK_CONTROL_MASK"/>
                       </object>
                       <packing>
