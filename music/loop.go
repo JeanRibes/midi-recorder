@@ -9,6 +9,7 @@ import (
 
 	. "github.com/JeanRibes/midi/shared"
 
+	"github.com/charmbracelet/log"
 	charmlog "github.com/charmbracelet/log"
 	"gitlab.com/gomidi/midi/v2"
 	"gitlab.com/gomidi/midi/v2/drivers"
@@ -71,11 +72,31 @@ func Run(ctx context.Context, cancel func(), in drivers.In, out drivers.Out, sta
 	lastOnStep := []*RecEvent{}
 	stop, err := midi.ListenTo(in, func(msg midi.Message, absms int32) {
 		var ch, key, vel uint8
-
+		var delta uint32
 		switch {
 		case msg.GetNoteOn(&ch, &key, &vel) || msg.GetNoteEnd(&ch, &key):
+			if isRecording {
+				deltams := absms - absmillisec
+				absmillisec = absms
+				delta = TICKS.Ticks(BPM, time.Duration(deltams)*time.Millisecond)
+			}
 			on := msg.IsOneOf(midi.NoteOnMsg)
-			//note := midi.Note(key)
+
+			if shoudStartRecording && on {
+				// START record
+				shoudStartRecording = false
+				isRecording = true
+				absmillisec = absms
+				if isSteps {
+					state.MutiTrack = smf.Track{}
+					state.MutiTrack.Add(0, smf.MetaTempo(BPM))
+				} else {
+					logger.Debug("started recording multi-track")
+					state.TempTrack = smf.Track{}
+					state.TempTrack.Add(0, smf.MetaTempo(BPM))
+					//state.TempTrack.Add(0, msg)
+				}
+			}
 
 			if isSteps {
 				if on {
@@ -84,11 +105,18 @@ func Run(ctx context.Context, cancel func(), in drivers.In, out drivers.Out, sta
 				cnt := 0
 				for _, ev := range lastOnStep {
 					send(ev.Message(on))
+					if isRecording {
+						state.MutiTrack.Add(delta, ev.Message(on))
+						delta = 0
+					}
 					cnt += 1
 				}
 				if cnt == 0 {
 					if on {
 						send(midi.NoteOn(ch, 1, vel))
+					}
+					if isRecording {
+						return
 					}
 					logger.Info("steps finished")
 					state.ResetStep()
@@ -96,25 +124,12 @@ func Run(ctx context.Context, cancel func(), in drivers.In, out drivers.Out, sta
 					SinkUI <- Message{Type: StepMode, Boolean: isSteps}
 				}
 				return
+			} else {
+				if isRecording {
+					state.TempTrack.Add(delta, msg)
+				}
 			}
 
-			if shoudStartRecording && on {
-				// START record
-				shoudStartRecording = false
-				isRecording = true
-				state.TempTrack = smf.Track{}
-				state.TempTrack.Add(0, smf.MetaTempo(BPM))
-				absmillisec = absms
-				/*main.Add(0, msg)
-				send(msg)
-				return*/
-			}
-			if isRecording {
-				deltams := absms - absmillisec
-				absmillisec = absms
-				delta := TICKS.Ticks(BPM, time.Duration(deltams)*time.Millisecond)
-				state.TempTrack.Add(delta, msg)
-			}
 			send(msg)
 		case msg.GetControlChange(&ch, &key, &vel):
 			if isSteps {
@@ -131,13 +146,7 @@ func Run(ctx context.Context, cancel func(), in drivers.In, out drivers.Out, sta
 		return
 	}
 
-	for bank, leng := range state.Stats() {
-		SinkUI <- Message{
-			Type:    BankLengthNotify,
-			Number:  bank,
-			Number2: leng,
-		}
-	}
+	state.Notify(SinkUI)
 
 	buffered_send := Scheduler(send) // pour les erreurs MIDI
 
@@ -164,10 +173,13 @@ loopchan:
 					isRecording = false
 					SinkUI <- Message{Type: Record, Boolean: false}
 					logger.Debug("stop recording")
-					state.TempTrack.Close(0)
-					//state.Clear(0)
-					state.EndRecord()
-					logger.Debug("put recordtrack into bank 0", "len", len(state.Banks[0]))
+					if isSteps {
+						state.MutiTrack.Close(0)
+					} else {
+						state.TempTrack.Close(0)
+						state.EndRecord()
+						logger.Debug("put recordtrack into bank 0", "len", len(state.Banks[0]))
+					}
 					SinkUI <- Message{
 						Type:    BankLengthNotify,
 						Number:  0,
@@ -196,7 +208,15 @@ loopchan:
 					logger.Info("start playing")
 					//PlayTrack(playCtx, state.TempTrack, TICKS, send)
 					go func() {
-						state.Play(playCtx, buffered_send)
+						if isSteps {
+							log.Info("start play multi-track")
+							if err := PlayTrack(playCtx, state.MutiTrack, TICKS, buffered_send); err != nil {
+								logger.Error(err)
+							}
+							log.Info("stop play multi-track")
+						} else {
+							state.Play(playCtx, buffered_send)
+						}
 						//buffered_send(state.Banks[0][0].Message(true))
 						logger.Info("finished playing")
 						currentlyPlaying = false
@@ -238,6 +258,7 @@ loopchan:
 					logger.Error(err)
 					SinkUI <- Message{Type: Error, String: err.Error()}
 				}
+				state.Notify(SinkUI)
 			case StateExport:
 				fileName := msg.String
 				if !strings.HasSuffix(fileName, ".mid") {
@@ -346,6 +367,27 @@ loopchan:
 					}
 					logger.Info("suppression de la dernière note", "avant", l, "après", len(state.TempTrack))
 				}
+			case ExportMultiTrack:
+				if !state.MutiTrack.IsClosed() {
+					logger.Warn("multi-track was not closed")
+					state.MutiTrack.Close(0)
+				}
+				filepath := msg.String
+				if !strings.HasSuffix(filepath, ".mid") {
+					filepath += ".mid"
+				}
+				f := smf.New()
+				f.Add(state.MutiTrack)
+				if err := f.WriteFile(filepath); err != nil {
+					logger.Error(err)
+					SinkLoop <- Message{
+						Type:   Error,
+						String: err.Error(),
+					}
+				}
+			case ClearState:
+				state.ClearState()
+				state.Notify(SinkUI)
 			default:
 				logger.Printf("unknown message type: %#v", msg.Type)
 			}

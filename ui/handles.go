@@ -2,6 +2,8 @@ package ui
 
 import "github.com/gotk3/gotk3/gtk"
 
+var eraseSessionImg *gtk.Image
+var exportImg *gtk.Image
 var openImg *gtk.Image
 var pauseImg *gtk.Image
 var playImg *gtk.Image
@@ -23,14 +25,16 @@ var bpmEntry *gtk.Entry
 var ticksEntry *gtk.Entry
 var quantizeBtn *gtk.Button
 var fileButtons *gtk.Box
-var importBankBtn *gtk.FileChooserButton
 var saveStateBtn *gtk.Button
 var loadStateBtn *gtk.Button
+var eraseSessionBtn *gtk.Button
 var playBtn *gtk.Button
 var stepsChb *gtk.CheckButton
 var stepReset *gtk.Button
+var importBankBtn *gtk.FileChooserButton
 var recordBtn *gtk.Button
 var undoNote *gtk.Button
+var exportMultiTrackBtn *gtk.Button
 var dragNdropZones *gtk.Box
 var importZone *gtk.EventBox
 var exportZone *gtk.EventBox
@@ -39,6 +43,10 @@ var cutZone *gtk.EventBox
 var banksBox *gtk.Box
 
 func loadUI(builder *gtk.Builder) {
+	_eraseSessionImg, _ := builder.GetObject("eraseSessionImg")
+	eraseSessionImg = _eraseSessionImg.(*gtk.Image)
+	_exportImg, _ := builder.GetObject("exportImg")
+	exportImg = _exportImg.(*gtk.Image)
 	_openImg, _ := builder.GetObject("openImg")
 	openImg = _openImg.(*gtk.Image)
 	_pauseImg, _ := builder.GetObject("pauseImg")
@@ -81,22 +89,26 @@ func loadUI(builder *gtk.Builder) {
 	quantizeBtn = _quantizeBtn.(*gtk.Button)
 	_fileButtons, _ := builder.GetObject("fileButtons")
 	fileButtons = _fileButtons.(*gtk.Box)
-	_importBankBtn, _ := builder.GetObject("importBankBtn")
-	importBankBtn = _importBankBtn.(*gtk.FileChooserButton)
 	_saveStateBtn, _ := builder.GetObject("saveStateBtn")
 	saveStateBtn = _saveStateBtn.(*gtk.Button)
 	_loadStateBtn, _ := builder.GetObject("loadStateBtn")
 	loadStateBtn = _loadStateBtn.(*gtk.Button)
+	_eraseSessionBtn, _ := builder.GetObject("eraseSessionBtn")
+	eraseSessionBtn = _eraseSessionBtn.(*gtk.Button)
 	_playBtn, _ := builder.GetObject("playBtn")
 	playBtn = _playBtn.(*gtk.Button)
 	_stepsChb, _ := builder.GetObject("stepsChb")
 	stepsChb = _stepsChb.(*gtk.CheckButton)
 	_stepReset, _ := builder.GetObject("stepReset")
 	stepReset = _stepReset.(*gtk.Button)
+	_importBankBtn, _ := builder.GetObject("importBankBtn")
+	importBankBtn = _importBankBtn.(*gtk.FileChooserButton)
 	_recordBtn, _ := builder.GetObject("recordBtn")
 	recordBtn = _recordBtn.(*gtk.Button)
 	_undoNote, _ := builder.GetObject("undoNote")
 	undoNote = _undoNote.(*gtk.Button)
+	_exportMultiTrackBtn, _ := builder.GetObject("exportMultiTrackBtn")
+	exportMultiTrackBtn = _exportMultiTrackBtn.(*gtk.Button)
 	_dragNdropZones, _ := builder.GetObject("dragNdropZones")
 	dragNdropZones = _dragNdropZones.(*gtk.Box)
 	_importZone, _ := builder.GetObject("importZone")

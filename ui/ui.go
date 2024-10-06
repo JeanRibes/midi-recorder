@@ -356,6 +356,19 @@ func Run(ctx context.Context, cancel func(), inP, outP int, inL []string, inN []
 		}
 		d.Destroy()
 	})
+	exportMultiTrackBtn.Connect("clicked", func() {
+		d, _ := gtk.FileChooserDialogNewWith2Buttons("Exporter MIDI", mainWin, gtk.FILE_CHOOSER_ACTION_SAVE, "Exporter", gtk.RESPONSE_ACCEPT, "Annuler", gtk.RESPONSE_CANCEL)
+		d.SetDoOverwriteConfirmation(true)
+		response := d.Run()
+		if response == gtk.RESPONSE_ACCEPT {
+			SinkLoop <- Message{Type: ExportMultiTrack, String: d.GetFilename()}
+		}
+		d.Destroy()
+	})
+
+	eraseSessionBtn.Connect("clicked", func() {
+		SinkLoop <- Message{Type: ClearState}
+	})
 
 	undoNote.Connect("clicked", func() {
 		SinkLoop <- Message{Type: NoteUndo}

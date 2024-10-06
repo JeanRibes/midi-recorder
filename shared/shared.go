@@ -21,6 +21,8 @@ const (
 	BankExport
 	BankCut
 	NoteUndo
+	ExportMultiTrack
+	ClearState
 )
 
 type Message struct {

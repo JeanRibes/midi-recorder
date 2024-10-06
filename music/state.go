@@ -17,6 +17,7 @@ type LoopState struct {
 	playBank  [NUM_BANKS]bool     // choisit les banques qui seront jouées
 	TempTrack smf.Track           // pour enregistrer vers les banques
 	StepIndex int
+	MutiTrack smf.Track
 	sync.Mutex
 }
 
@@ -105,6 +106,7 @@ func (s *LoopState) SaveToFile(filepath string) (errs error) {
 			errs = errors.Join(errs, err)
 		}
 	}
+	f.Add(s.MutiTrack)
 	/*f.Tracks[0][0] = smf.Event{
 		Message: smf.MetaText("yo"),
 		Delta:   0,
@@ -124,9 +126,10 @@ func (s *LoopState) LoadFromFile(filepath string) error {
 		return errors.New("no tracks in file")
 	}
 	s.TempTrack = f.Tracks[0]
-	for i, track := range f.Tracks[1:] {
+	for i, track := range f.Tracks[1:6] {
 		s.Append(i, Convert(track))
 	}
+	s.MutiTrack = f.Tracks[f.NumTracks()-1]
 	/*ms := ""
 	if f.Tracks[0][0].Message.GetMetaText(&ms) {
 		println(ms)
@@ -134,12 +137,14 @@ func (s *LoopState) LoadFromFile(filepath string) error {
 	return nil
 }
 
-func (s *LoopState) Stats() (res [NUM_BANKS]int) {
-	s.Lock()
+func (s *LoopState) Notify(sink chan Message) {
 	for i, bank := range s.Banks {
-		res[i] = len(bank)
+		sink <- Message{
+			Type:    BankLengthNotify,
+			Number:  i,
+			Number2: len(bank),
+		}
 	}
-	s.Unlock()
 	return
 }
 
@@ -185,4 +190,14 @@ func (s *LoopState) Play(ctx context.Context, send func(midi.Message) error) {
 		println("ok")
 	}
 	println("finieshed play")
+}
+
+func (s *LoopState) ClearState() {
+	s.Lock()
+	s.TempTrack = smf.Track{}
+	s.MutiTrack = smf.Track{}
+	for i := range s.Banks {
+		s.Banks[i] = RecTrack{}
+	}
+	s.Unlock()
 }
