@@ -68,7 +68,7 @@ func Run(ctx context.Context, cancel func(), in drivers.In, out drivers.Out, sta
 	shoudStartRecording := false
 	isRecording := false
 	isSteps := false
-	lastOnStep := [NUM_BANKS]*RecEvent{}
+	lastOnStep := []*RecEvent{}
 	stop, err := midi.ListenTo(in, func(msg midi.Message, absms int32) {
 		var ch, key, vel uint8
 
@@ -83,21 +83,12 @@ func Run(ctx context.Context, cancel func(), in drivers.In, out drivers.Out, sta
 				}
 				cnt := 0
 				for _, ev := range lastOnStep {
-					if ev != nil {
-						//send(ev.Message(on))
-						if on {
-							send(midi.NoteOn(ch, uint8(ev.note), vel))
-						} else {
-							send(midi.NoteOff(ch, uint8(ev.note)))
-						}
-						cnt += 1
-					}
+					send(ev.Message(on))
+					cnt += 1
 				}
 				if cnt == 0 {
 					if on {
 						send(midi.NoteOn(ch, 1, vel))
-					} else {
-						send(midi.NoteOff(ch, 1))
 					}
 					logger.Info("steps finished")
 					state.ResetStep()

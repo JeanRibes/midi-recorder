@@ -19,10 +19,17 @@ type RecEvent struct {
 	vel          uint8
 }
 
-// func (ev *RecEvent) Play(send func(midi.Message) error) error {
 func (ev *RecEvent) Message(on bool) midi.Message {
 	if on {
 		return midi.NoteOn(0, uint8(ev.note), ev.vel)
+	} else {
+		return midi.NoteOff(0, uint8(ev.note))
+	}
+}
+
+func (ev *RecEvent) MessageVel(on bool, vel uint8) midi.Message {
+	if on {
+		return midi.NoteOn(0, uint8(ev.note), vel)
 	} else {
 		return midi.NoteOff(0, uint8(ev.note))
 	}

@@ -70,13 +70,13 @@ func (s *LoopState) Clear(bank int) {
 Joue les notes des banques actives, uniquement si elles sont assez longues pour contenir
 l'index de la note
 */
-func (s *LoopState) StepPlay() [NUM_BANKS]*RecEvent {
-	res := [NUM_BANKS]*RecEvent{}
+func (s *LoopState) StepPlay() []*RecEvent {
+	res := make([]*RecEvent, 0, NUM_BANKS)
 
 	s.Lock()
 	for bankIndex, bank := range s.Banks {
 		if s.StepIndex < len(bank) && s.playBank[bankIndex] {
-			res[bankIndex] = &bank[s.StepIndex]
+			res = append(res, &bank[s.StepIndex])
 		}
 	}
 	s.Unlock()
