@@ -7,7 +7,7 @@
     <property name="can-focus">False</property>
     <property name="icon-name">document-open</property>
   </object>
-  <object class="GtkImage" id="pauseimg">
+  <object class="GtkImage" id="pauseImg">
     <property name="visible">True</property>
     <property name="can-focus">False</property>
     <property name="icon-name">media-playback-pause</property>
@@ -262,8 +262,8 @@
                         <property name="can-focus">True</property>
                         <property name="receives-default">True</property>
                         <property name="image">playImg</property>
-                        <accelerator key="p" signal="clicked"/>
                         <accelerator key="l" signal="clicked"/>
+                        <accelerator key="p" signal="clicked"/>
                       </object>
                       <packing>
                         <property name="expand">False</property>
@@ -320,8 +320,8 @@
                         <property name="can-focus">True</property>
                         <property name="receives-default">True</property>
                         <property name="image-position">right</property>
-                        <accelerator key="e" signal="clicked"/>
                         <accelerator key="r" signal="clicked"/>
+                        <accelerator key="e" signal="clicked"/>
                       </object>
                       <packing>
                         <property name="expand">False</property>

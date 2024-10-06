@@ -8,6 +8,7 @@ import (
 	"fmt"
 	"os"
 	"strconv"
+	"time"
 
 	. "github.com/JeanRibes/midi/shared"
 
@@ -54,6 +55,11 @@ func Run(ctx context.Context, cancel func(), inP, outP int, inL []string, inN []
 		//cancel()
 		logger.Debug("close win, sending quit event")
 		MasterControl <- Message{Type: Quit}
+		quitCtx, _ := context.WithDeadline(context.Background(), time.Now().Add(time.Second*5))
+		<-quitCtx.Done()
+		logger.Warn("took too long to shutdown")
+		os.Exit(3)
+
 	})
 
 	recordBtn.SetImage(startrecordImg)
@@ -86,7 +92,8 @@ func Run(ctx context.Context, cancel func(), inP, outP int, inL []string, inN []
 	})
 
 	stepsChb.Connect("clicked", func() {
-		SinkLoop <- Message{Type: StepMode}
+		logger.Debug("set steps to", "mode", stepsChb.GetActive())
+		SinkLoop <- Message{Type: StepMode, Boolean: stepsChb.GetActive()}
 	})
 
 	errors := ""
@@ -402,18 +409,18 @@ func Run(ctx context.Context, cancel func(), inP, outP int, inL []string, inN []
 				case PlayPause:
 					if msg.Boolean {
 						glib.IdleAdd(func() {
-							playBtn.SetImage(pauseimg)
+							playBtn.SetImage(pauseImg)
 						})
 					} else {
 						glib.IdleAdd(func() {
-							playBtn.SetImage(playBtn)
+							playBtn.SetImage(playImg)
 						})
 					}
 				case Quantize:
 					glib.IdleAdd(func() { quantizeBtn.SetSensitive(true) })
 				case StepMode:
-					// checkbox
-					continue
+					stepsChb.SetActive(msg.Boolean)
+					logger.Debug("set stepsChb to", "bool", msg.Boolean)
 				case Error:
 					if len(errors) == 0 {
 						errors = msg.String

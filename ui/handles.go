@@ -3,7 +3,7 @@ package ui
 import "github.com/gotk3/gotk3/gtk"
 
 var openImg *gtk.Image
-var pauseimg *gtk.Image
+var pauseImg *gtk.Image
 var playImg *gtk.Image
 var quantizeImg *gtk.Image
 var reconnectImg *gtk.Image
@@ -41,8 +41,8 @@ var banksBox *gtk.Box
 func loadUI(builder *gtk.Builder) {
 	_openImg, _ := builder.GetObject("openImg")
 	openImg = _openImg.(*gtk.Image)
-	_pauseimg, _ := builder.GetObject("pauseimg")
-	pauseimg = _pauseimg.(*gtk.Image)
+	_pauseImg, _ := builder.GetObject("pauseImg")
+	pauseImg = _pauseImg.(*gtk.Image)
 	_playImg, _ := builder.GetObject("playImg")
 	playImg = _playImg.(*gtk.Image)
 	_quantizeImg, _ := builder.GetObject("quantizeImg")

@@ -84,6 +84,10 @@ masterLoop:
 		case <-signalCh:
 			logger.Debug("\ninterrupt")
 			MasterControl <- Message{Type: Quit}
+			quitCtx, _ := context.WithDeadline(context.Background(), time.Now().Add(time.Second*5))
+			<-quitCtx.Done()
+			logger.Warn("took too long to shutdown")
+			os.Exit(3)
 		case m := <-MasterControl:
 			switch m.Type {
 			case Quit:

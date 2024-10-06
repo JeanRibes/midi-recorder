@@ -99,6 +99,10 @@ func Run(ctx context.Context, cancel func(), in drivers.In, out drivers.Out, sta
 					} else {
 						send(midi.NoteOff(ch, 1))
 					}
+					logger.Info("steps finished")
+					state.ResetStep()
+					isSteps = false
+					SinkUI <- Message{Type: StepMode, Boolean: isSteps}
 				}
 				return
 			}
@@ -125,7 +129,7 @@ func Run(ctx context.Context, cancel func(), in drivers.In, out drivers.Out, sta
 			if isSteps {
 				state.ResetStep()
 			} else {
-				SinkLoop <- Message{Type: StepMode, Boolean: false}
+				SinkUI <- Message{Type: StepMode, Boolean: false}
 			}
 		}
 	})
@@ -194,6 +198,7 @@ loopchan:
 					context.AfterFunc(playCtx, func() {
 						SinkUI <- Message{Type: PlayPause, Boolean: false}
 						currentlyPlaying = false
+						logger.Debug("play afterfunc")
 					})
 					SinkUI <- Message{Type: PlayPause, Boolean: true}
 					currentlyPlaying = true
@@ -201,9 +206,12 @@ loopchan:
 					//PlayTrack(playCtx, state.TempTrack, TICKS, send)
 					go func() {
 						state.Play(playCtx, buffered_send)
+						//buffered_send(state.Banks[0][0].Message(true))
 						logger.Info("finished playing")
+						currentlyPlaying = false
 						cancelPlay()
 					}()
+					logger.Debug("play queued")
 				}
 			case Quantize:
 				go func() {
@@ -226,8 +234,8 @@ loopchan:
 					logger.Debug("quantize done")
 				}()
 			case StepMode:
+				isSteps = msg.Boolean
 				logger.Debug("set steps to", "mode", isSteps)
-				isSteps = !isSteps
 				SinkUI <- Message{Type: StepMode, Boolean: isSteps}
 				state.ResetStep()
 			case ResetStep:
