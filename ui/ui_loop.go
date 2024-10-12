@@ -69,11 +69,12 @@ func loop(ctx context.Context, SinkUI chan Message, logger log.Logger, banksLabe
 				bank := msg.Number
 				length := msg.Number2
 				glib.IdleAdd(func() {
-					if bank == 0 {
+					banksLabels[bank].SetLabel(BankName(bank) + fmt.Sprintf("\n%d notes", length))
+					/*if bank == 0 {
 						banksLabels[bank].SetLabel(fmt.Sprintf("buffer \n%d notes", length))
 					} else {
 						banksLabels[bank].SetLabel(fmt.Sprintf("bank %d\n%d notes", bank, length))
-					}
+					}*/
 				})
 			}
 		}

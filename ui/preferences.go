@@ -4,18 +4,25 @@ import (
 	"encoding/json"
 	"os"
 	"slices"
+	"strings"
+	"time"
 )
 
+type RecentFile struct {
+	Path string `json:"path"`
+	Time int64  `json:"time"`
+}
+type RecentFiles []RecentFile
 type Preferences struct {
-	RecentSessions []string `json:"recent_sessions"`
-	RecentTracks   []string `json:"recent_tracks"`
+	RecentSessions RecentFiles `json:"recent_sessions"`
+	RecentTracks   RecentFiles `json:"recent_tracks"`
 }
 
 func LoadPreferences() (*Preferences, error) {
 	f, err := os.Open("data.json")
 	prefs := &Preferences{
-		RecentSessions: []string{},
-		RecentTracks:   []string{},
+		RecentSessions: RecentFiles{},
+		RecentTracks:   RecentFiles{},
 	}
 	if err != nil {
 		return prefs, err
@@ -30,6 +37,7 @@ func LoadPreferences() (*Preferences, error) {
 	if err := json.NewDecoder(f).Decode(prefs); err != nil {
 		return nil, err
 	}
+	go prefs.Refresh()
 	return prefs, nil
 }
 
@@ -41,21 +49,21 @@ func hash(s string) int {
 	return num
 }
 
-func unique(sl []string) []string {
+func unique(sl RecentFiles) RecentFiles {
 	counter := map[int]int{}
 	slices.Reverse(sl)
-	for _, str := range sl {
-		if count, ok := counter[hash(str)]; ok {
-			counter[hash(str)] = count + 1
+	for _, rf := range sl {
+		if count, ok := counter[hash(rf.Path)]; ok {
+			counter[hash(rf.Path)] = count + 1
 		} else {
-			counter[hash(str)] = 1
+			counter[hash(rf.Path)] = 1
 		}
 	}
-	out := []string{}
-	for _, str := range sl {
-		if counter[hash(str)] > 0 {
-			out = append(out, str)
-			counter[hash(str)] = 0
+	out := RecentFiles{}
+	for _, rf := range sl {
+		if counter[hash(rf.Path)] > 0 {
+			out = append(out, rf)
+			counter[hash(rf.Path)] = 0
 		}
 	}
 	slices.Reverse(out)
@@ -75,21 +83,64 @@ func (p *Preferences) Save() error {
 }
 
 func (p *Preferences) AddTrack(path string) {
-	p.RecentTracks = unique(append(p.RecentTracks, path))
+	p.RecentTracks = unique(append(p.RecentTracks, RecentFile{
+		Path: path,
+		Time: time.Now().Unix(),
+	}))
 }
 
 func (p *Preferences) AddSession(path string) {
-	p.RecentSessions = unique(append(p.RecentSessions, path))
+	p.RecentSessions = unique(append(p.RecentSessions, RecentFile{
+		Path: path,
+		Time: time.Now().Unix(),
+	}))
 }
 
-func (p *Preferences) Sessions() []string {
+func (p *Preferences) Sessions() RecentFiles {
 	s := slices.Clone(p.RecentSessions)
 	slices.Reverse(s)
 	return s
 }
 
-func (p *Preferences) Tracks() []string {
+func (p *Preferences) Tracks() RecentFiles {
 	s := slices.Clone(p.RecentTracks)
 	slices.Reverse(s)
 	return s
+}
+
+func (p *Preferences) Refresh() {
+	for i, item := range p.RecentTracks {
+		stat, err := os.Stat(item.Path)
+		if err != nil {
+			continue
+		}
+		item.Time = stat.ModTime().Unix()
+		p.RecentTracks[i] = item
+	}
+
+	for i, item := range p.RecentSessions {
+		stat, err := os.Stat(item.Path)
+		if err != nil {
+			continue
+		}
+		item.Time = stat.ModTime().Unix()
+		p.RecentSessions[i] = item
+	}
+}
+
+func (_rfs *RecentFiles) LCP() string {
+	rfs := *_rfs
+	if len(rfs) <= 1 {
+		return ""
+	}
+	prefix := rfs[0].Path
+
+	// Compare the prefix with the other strings
+	for _, rf := range rfs {
+		for !strings.HasPrefix(rf.Path, prefix) {
+			// Progressively reduce the prefix until it matches
+			prefix = prefix[:len(prefix)-1]
+		}
+	}
+	return prefix
 }

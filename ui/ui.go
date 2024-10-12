@@ -5,10 +5,8 @@ package ui
 import (
 	"context"
 	_ "embed"
-	"fmt"
 	"os"
 	"strconv"
-	"strings"
 	"time"
 
 	. "github.com/JeanRibes/midi/shared"
@@ -160,7 +158,7 @@ func Run(ctx context.Context, cancel func(), inP, outP int, inL []string, inN []
 	ACTION := gdk.ACTION_COPY
 	for i := 0; i < NUM_BANKS; i++ {
 		bankEventBox, _ := gtk.EventBoxNew() //gtk.LabelNew(fmt.Sprintf("bank \n%d", i))
-		bankLabel, _ := gtk.LabelNew(fmt.Sprintf("bank %d", i))
+		bankLabel, _ := gtk.LabelNew(BankName(i))
 		banksLabels[i] = bankLabel
 
 		playBankToggle, _ := gtk.CheckButtonNewWithLabel("play")
@@ -406,7 +404,7 @@ func Run(ctx context.Context, cancel func(), inP, outP int, inL []string, inN []
 		if err != nil {
 			log.Warn(err)
 		}
-		val, err := model.GetValue(iter, COLONNE_NOM)
+		val, err := model.GetValue(iter, COLONNE_PATH)
 		if err != nil {
 			log.Warn(err)
 		}
@@ -414,7 +412,7 @@ func Run(ctx context.Context, cancel func(), inP, outP int, inL []string, inN []
 		if err != nil {
 			log.Warn(err)
 		}
-		filepath = strings.Replace(filepath, "~", glib.GetHomeDir(), 1)
+		//filepath = strings.Replace(filepath, "~", glib.GetHomeDir(), 1)
 		logger.Debug("track treeview DnD", "filepath", filepath)
 		binData := []byte{byte(ImportZone)}
 		data.SetData(gdk.SELECTION_PRIMARY, append(binData, []byte(filepath)...))
