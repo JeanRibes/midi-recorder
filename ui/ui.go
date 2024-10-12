@@ -8,10 +8,12 @@ import (
 	"fmt"
 	"os"
 	"strconv"
+	"strings"
 	"time"
 
 	. "github.com/JeanRibes/midi/shared"
 
+	"github.com/charmbracelet/log"
 	charmlog "github.com/charmbracelet/log"
 	"github.com/gotk3/gotk3/gdk"
 	"github.com/gotk3/gotk3/glib"
@@ -31,7 +33,7 @@ const (
 	ImportZone
 )
 
-func Run(ctx context.Context, cancel func(), inP, outP int, inL []string, inN []int, outL []string, outN []int, SinkUI, SinkLoop, MasterControl chan Message) {
+func Run(ctx context.Context, cancel func(), inP, outP int, inL []string, inN []int, outL []string, outN []int, SinkUI, SinkLoop, MasterControl chan Message, prefs *Preferences) {
 	logger := charmlog.NewWithOptions(os.Stdout, charmlog.Options{
 		Level:           charmlog.DebugLevel,
 		ReportCaller:    true,
@@ -249,7 +251,8 @@ func Run(ctx context.Context, cancel func(), inP, outP int, inL []string, inN []
 					Number2: dst,
 				}
 			case ImportZone:
-				filename := importBankBtn.GetFilename()
+				//filename := importBankBtn.GetFilename()
+				filename := string(data.GetData()[1:])
 				logger.Info("appending to bank", "index", i, "path", filename)
 				if len(filename) > 0 {
 					SinkLoop <- Message{
@@ -257,6 +260,7 @@ func Run(ctx context.Context, cancel func(), inP, outP int, inL []string, inN []
 						Number: dst,
 						String: filename,
 					}
+					prefs.AddTrack(filename)
 				}
 			}
 
@@ -300,12 +304,14 @@ func Run(ctx context.Context, cancel func(), inP, outP int, inL []string, inN []
 			response := d.Run()
 			if response == gtk.RESPONSE_ACCEPT {
 				//SinkLoop <- Message{ev: LoadFromFile, str: d.GetFilename()}
-				logger.Info("exporting bank to file", "bank", src, "path", d.GetFilename())
+				filename := d.GetFilename()
+				logger.Info("exporting bank to file", "bank", src, "path", filename)
 				SinkLoop <- Message{
 					Type:   BankExport,
 					Number: src,
-					String: d.GetFilename(),
+					String: filename,
 				}
+				prefs.AddTrack(filename)
 			}
 			d.Destroy()
 		})
@@ -331,7 +337,7 @@ func Run(ctx context.Context, cancel func(), inP, outP int, inL []string, inN []
 	})
 
 	loadStateBtn.Connect("clicked", func() {
-		d, _ := gtk.FileChooserDialogNewWith2Buttons("Charger MIDI", mainWin, gtk.FILE_CHOOSER_ACTION_OPEN, "Ouvrir", gtk.RESPONSE_ACCEPT, "Annuler", gtk.RESPONSE_CANCEL)
+		d, _ := gtk.FileChooserDialogNewWith2Buttons("Charger Session", mainWin, gtk.FILE_CHOOSER_ACTION_OPEN, "Ouvrir", gtk.RESPONSE_ACCEPT, "Annuler", gtk.RESPONSE_CANCEL)
 		filter, _ := gtk.FileFilterNew()
 		filter.AddPattern("*.mid")
 		filter.AddPattern("*.midi")
@@ -342,17 +348,21 @@ func Run(ctx context.Context, cancel func(), inP, outP int, inL []string, inN []
 		response := d.Run()
 		if response == gtk.RESPONSE_ACCEPT {
 			SinkLoop <- Message{Type: StateImport, String: d.GetFilename()}
+			prefs.AddSession(d.GetFilename())
 		}
 		d.Destroy()
 	})
 
+	glib.GetUserConfigDir()
+
 	//saveFileBtn, _ := gtk.ButtonNewWithLabel("Sauvegarder vers fichier")
 	saveStateBtn.Connect("clicked", func() {
-		d, _ := gtk.FileChooserDialogNewWith2Buttons("Enregistrer MIDI", mainWin, gtk.FILE_CHOOSER_ACTION_SAVE, "Sauvegarder", gtk.RESPONSE_ACCEPT, "Annuler", gtk.RESPONSE_CANCEL)
+		d, _ := gtk.FileChooserDialogNewWith2Buttons("Sauvegarder Session", mainWin, gtk.FILE_CHOOSER_ACTION_SAVE, "Sauvegarder", gtk.RESPONSE_ACCEPT, "Annuler", gtk.RESPONSE_CANCEL)
 		d.SetDoOverwriteConfirmation(true)
 		response := d.Run()
 		if response == gtk.RESPONSE_ACCEPT {
 			SinkLoop <- Message{Type: StateExport, String: d.GetFilename()}
+			prefs.AddSession(d.GetFilename())
 		}
 		d.Destroy()
 	})
@@ -362,6 +372,7 @@ func Run(ctx context.Context, cancel func(), inP, outP int, inL []string, inN []
 		response := d.Run()
 		if response == gtk.RESPONSE_ACCEPT {
 			SinkLoop <- Message{Type: ExportMultiTrack, String: d.GetFilename()}
+			prefs.AddTrack(d.GetFilename())
 		}
 		d.Destroy()
 	})
@@ -381,6 +392,66 @@ func Run(ctx context.Context, cancel func(), inP, outP int, inL []string, inN []
 	loadFileBtn2.DragDestSet(gtk.DEST_DEFAULT_ALL, targetsList, gdk.ACTION_COPY)
 	mainBox.Add(loadFileBtn2)*/
 
+	//treeView, _ := gtk.TreeViewNew()
+	recentTracksTableau := NewWithTreeView(trackTreeView)
+	mainHBox.Add(trackTreeView)
+	recentTracksTableau.FromSessions(prefs.Tracks())
+
+	trackTreeView.DragSourceSet(gdk.BUTTON1_MASK|gdk.BUTTON2_MASK, targetsList, ACTION)
+	trackTreeView.Connect("drag-data-get", func(self *gtk.TreeView, ctx *gdk.DragContext, data *gtk.SelectionData, info, time int) {
+		_model, _ := trackTreeView.GetModel()
+		model := _model.ToTreeModel()
+		path, _ := trackTreeView.GetCursor()
+		iter, err := model.GetIter(path)
+		if err != nil {
+			log.Warn(err)
+		}
+		val, err := model.GetValue(iter, COLONNE_NOM)
+		if err != nil {
+			log.Warn(err)
+		}
+		filepath, err := val.GetString()
+		if err != nil {
+			log.Warn(err)
+		}
+		filepath = strings.Replace(filepath, "~", glib.GetHomeDir(), 1)
+		logger.Debug("track treeview DnD", "filepath", filepath)
+		binData := []byte{byte(ImportZone)}
+		data.SetData(gdk.SELECTION_PRIMARY, append(binData, []byte(filepath)...))
+	})
+
+	/*sessionsTreeView.Connect("row-activated", func(self *gtk.TreeView,path *gtk.TreePath,col *gtk.TreeViewColumn,
+	) {
+		println("tv", path.String())
+		})*/
+	loadSessionPopBtn, _ := gtk.ButtonNewWithLabel("Charger cette session")
+	loadSessionPopBtn.Connect("clicked", func() {
+		logger.Debug("load session tab")
+		//recentTracksTableau.FromSessions(prefs.Tracks())
+	})
+	pop, err := gtk.PopoverNew(sessionsTreeView)
+	if err != nil {
+		panic(err)
+	}
+	pop.Add(loadSessionPopBtn)
+
+	recentSessionsTableau := NewWithTreeView(sessionsTreeView)
+	recentSessionsTableau.FromSessions(prefs.Sessions())
+	sessionsTreeView.Connect("button-press-event", func(self *gtk.TreeView, _event *gdk.Event) {
+		event := gdk.EventButtonNewFromEvent(_event)
+		if event.Button() == gdk.BUTTON_SECONDARY {
+			rect := gdk.RectangleNew(int(event.X()), int(event.Y()), 1, 1)
+			pop.SetPointingTo(*rect)
+			pop.ShowAll()
+			pop.Popup()
+		}
+	})
+
+	importBankBtn.Connect("file-set", func(self *gtk.FileChooserButton) {
+		prefs.AddTrack(importBankBtn.GetFilename())
+		recentTracksTableau.FromSessions(prefs.Tracks())
+	})
+
 	prov, _ := gtk.CssProviderNew()
 	if err := prov.LoadFromData(stylesheet); err != nil {
 		logger.Warn(err)
@@ -393,8 +464,8 @@ func Run(ctx context.Context, cancel func(), inP, outP int, inL []string, inN []
 	gtk.Main()
 	logger.Info("stop")
 	mainWin.HandlerDisconnect(windestroyhandle)
-	mainWin.Destroy()
 
+	mainWin.Destroy()
 }
 
 func targ(t *gtk.TargetEntry, err error) gtk.TargetEntry {

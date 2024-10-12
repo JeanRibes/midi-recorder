@@ -54,6 +54,15 @@ func main() {
 
 	state := music.NewState()
 
+	prefs, err := ui.LoadPreferences()
+	if err != nil {
+		logger.Error(err)
+		if prefs == nil {
+			os.Exit(1)
+		}
+		err = nil
+	}
+
 	TMPFILE := os.Getenv("XDG_RUNTIME_DIR") + "/usb-piano.mid"
 	if err := state.LoadFromFile(TMPFILE); err != nil {
 		logger.Error(err)
@@ -133,7 +142,7 @@ masterLoop:
 				inN = in.Number()
 				outN = out.Number()
 			}
-			go ui.Run(uiCtx, cancelUi, inN, outN, inPortsNames, inPortsNumbers, outPortsNames, outPortsNumbers, SinkUI, SinkLoop, MasterControl)
+			go ui.Run(uiCtx, cancelUi, inN, outN, inPortsNames, inPortsNumbers, outPortsNames, outPortsNumbers, SinkUI, SinkLoop, MasterControl, prefs)
 		case <-loopCtx.Done():
 			loopCtx, cancelLoop = context.WithCancel(mainCtx)
 			logger.Info("mc: restart Loop")
@@ -144,6 +153,9 @@ masterLoop:
 	}
 
 	if err := state.SaveToFile(TMPFILE); err != nil {
+		logger.Error(err)
+	}
+	if err := prefs.Save(); err != nil {
 		logger.Error(err)
 	}
 

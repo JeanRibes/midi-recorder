@@ -82,7 +82,7 @@
         <property name="can-focus">False</property>
         <property name="orientation">vertical</property>
         <child>
-          <object class="GtkBox">
+          <object class="GtkBox" id="mainHBox">
             <property name="visible">True</property>
             <property name="can-focus">False</property>
             <child>
@@ -274,8 +274,8 @@
                         <property name="can-focus">True</property>
                         <property name="receives-default">True</property>
                         <property name="image">playImg</property>
-                        <accelerator key="l" signal="clicked"/>
                         <accelerator key="p" signal="clicked"/>
+                        <accelerator key="l" signal="clicked"/>
                       </object>
                       <packing>
                         <property name="expand">False</property>
@@ -344,8 +344,8 @@
                         <property name="can-focus">True</property>
                         <property name="receives-default">True</property>
                         <property name="image-position">right</property>
-                        <accelerator key="r" signal="clicked"/>
                         <accelerator key="e" signal="clicked"/>
+                        <accelerator key="r" signal="clicked"/>
                       </object>
                       <packing>
                         <property name="expand">False</property>
@@ -601,7 +601,63 @@ banque</property>
               </packing>
             </child>
             <child>
-              <placeholder/>
+              <object class="GtkNotebook">
+                <property name="visible">True</property>
+                <property name="can-focus">True</property>
+                <child>
+                  <object class="GtkTreeView" id="trackTreeView">
+                    <property name="visible">True</property>
+                    <property name="can-focus">True</property>
+                    <child internal-child="selection">
+                      <object class="GtkTreeSelection"/>
+                    </child>
+                  </object>
+                </child>
+                <child type="tab">
+                  <object class="GtkLabel" id="tracksTab">
+                    <property name="visible">True</property>
+                    <property name="can-focus">False</property>
+                    <property name="label" translatable="yes">Pistes</property>
+                  </object>
+                  <packing>
+                    <property name="tab-fill">False</property>
+                  </packing>
+                </child>
+                <child>
+                  <object class="GtkTreeView" id="sessionsTreeView">
+                    <property name="visible">True</property>
+                    <property name="can-focus">True</property>
+                    <child internal-child="selection">
+                      <object class="GtkTreeSelection"/>
+                    </child>
+                  </object>
+                  <packing>
+                    <property name="position">1</property>
+                  </packing>
+                </child>
+                <child type="tab">
+                  <object class="GtkLabel" id="sessionsTab">
+                    <property name="visible">True</property>
+                    <property name="can-focus">False</property>
+                    <property name="label" translatable="yes">Sessions</property>
+                  </object>
+                  <packing>
+                    <property name="position">1</property>
+                    <property name="tab-fill">False</property>
+                  </packing>
+                </child>
+                <child>
+                  <placeholder/>
+                </child>
+                <child type="tab">
+                  <placeholder/>
+                </child>
+              </object>
+              <packing>
+                <property name="expand">False</property>
+                <property name="fill">True</property>
+                <property name="position">1</property>
+              </packing>
             </child>
           </object>
           <packing>

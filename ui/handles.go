@@ -17,6 +17,7 @@ var stepsImg *gtk.Image
 var stoprecordImg *gtk.Image
 var undoImg *gtk.Image
 var mainWin *gtk.Window
+var mainHBox *gtk.Box
 var reconnectMidi *gtk.Button
 var reloadBtn *gtk.Button
 var comboInPorts *gtk.ComboBox
@@ -40,6 +41,10 @@ var importZone *gtk.EventBox
 var exportZone *gtk.EventBox
 var deleteZone *gtk.EventBox
 var cutZone *gtk.EventBox
+var trackTreeView *gtk.TreeView
+var tracksTab *gtk.Label
+var sessionsTreeView *gtk.TreeView
+var sessionsTab *gtk.Label
 var banksBox *gtk.Box
 
 func loadUI(builder *gtk.Builder) {
@@ -73,6 +78,8 @@ func loadUI(builder *gtk.Builder) {
 	undoImg = _undoImg.(*gtk.Image)
 	_mainWin, _ := builder.GetObject("mainWin")
 	mainWin = _mainWin.(*gtk.Window)
+	_mainHBox, _ := builder.GetObject("mainHBox")
+	mainHBox = _mainHBox.(*gtk.Box)
 	_reconnectMidi, _ := builder.GetObject("reconnectMidi")
 	reconnectMidi = _reconnectMidi.(*gtk.Button)
 	_reloadBtn, _ := builder.GetObject("reloadBtn")
@@ -119,6 +126,14 @@ func loadUI(builder *gtk.Builder) {
 	deleteZone = _deleteZone.(*gtk.EventBox)
 	_cutZone, _ := builder.GetObject("cutZone")
 	cutZone = _cutZone.(*gtk.EventBox)
+	_trackTreeView, _ := builder.GetObject("trackTreeView")
+	trackTreeView = _trackTreeView.(*gtk.TreeView)
+	_tracksTab, _ := builder.GetObject("tracksTab")
+	tracksTab = _tracksTab.(*gtk.Label)
+	_sessionsTreeView, _ := builder.GetObject("sessionsTreeView")
+	sessionsTreeView = _sessionsTreeView.(*gtk.TreeView)
+	_sessionsTab, _ := builder.GetObject("sessionsTab")
+	sessionsTab = _sessionsTab.(*gtk.Label)
 	_banksBox, _ := builder.GetObject("banksBox")
 	banksBox = _banksBox.(*gtk.Box)
 }
