@@ -19,6 +19,7 @@ const (
 	BankClear
 	BankLengthNotify
 	ResetStep
+	StepBack
 	BankImport
 	BankExport
 	BankCut

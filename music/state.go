@@ -90,6 +90,12 @@ func (s *LoopState) ResetStep() {
 	s.StepIndex = 0
 }
 
+func (s *LoopState) StepBack() {
+	if s.StepIndex > 0 {
+		s.StepIndex -= 1
+	}
+}
+
 func (s *LoopState) EnableBank(bank int, enable bool) bool {
 	s.playBank[bank] = enable
 	return s.playBank[bank]
@@ -198,6 +204,21 @@ func (s *LoopState) ClearState() {
 	s.MutiTrack = smf.Track{}
 	for i := range s.Banks {
 		s.Banks[i] = RecTrack{}
+	}
+	s.Unlock()
+}
+
+func (s *LoopState) DeleteNote() {
+	s.Lock()
+	for bankIndex, bank := range s.Banks {
+		if s.StepIndex < len(bank) && s.playBank[bankIndex] {
+			//s.Banks[bankIndex] = slices.Delete(bank, s.StepIndex+1, s.StepIndex)
+			if s.StepIndex == 0 {
+				s.Banks[bankIndex] = bank[1:]
+			} else {
+				s.Banks[bankIndex] = append(bank[:s.StepIndex-1], bank[s.StepIndex:]...)
+			}
+		}
 	}
 	s.Unlock()
 }

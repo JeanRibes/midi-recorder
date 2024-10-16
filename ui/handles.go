@@ -7,6 +7,7 @@ var exportImg *gtk.Image
 var openImg *gtk.Image
 var pauseImg *gtk.Image
 var playImg *gtk.Image
+var previousImg *gtk.Image
 var quantizeImg *gtk.Image
 var reconnectImg *gtk.Image
 var refreshImg *gtk.Image
@@ -32,6 +33,7 @@ var eraseSessionBtn *gtk.Button
 var playBtn *gtk.Button
 var stepsChb *gtk.CheckButton
 var stepReset *gtk.Button
+var stepPrev *gtk.Button
 var importBankBtn *gtk.FileChooserButton
 var recordBtn *gtk.Button
 var undoNote *gtk.Button
@@ -58,6 +60,8 @@ func loadUI(builder *gtk.Builder) {
 	pauseImg = _pauseImg.(*gtk.Image)
 	_playImg, _ := builder.GetObject("playImg")
 	playImg = _playImg.(*gtk.Image)
+	_previousImg, _ := builder.GetObject("previousImg")
+	previousImg = _previousImg.(*gtk.Image)
 	_quantizeImg, _ := builder.GetObject("quantizeImg")
 	quantizeImg = _quantizeImg.(*gtk.Image)
 	_reconnectImg, _ := builder.GetObject("reconnectImg")
@@ -108,6 +112,8 @@ func loadUI(builder *gtk.Builder) {
 	stepsChb = _stepsChb.(*gtk.CheckButton)
 	_stepReset, _ := builder.GetObject("stepReset")
 	stepReset = _stepReset.(*gtk.Button)
+	_stepPrev, _ := builder.GetObject("stepPrev")
+	stepPrev = _stepPrev.(*gtk.Button)
 	_importBankBtn, _ := builder.GetObject("importBankBtn")
 	importBankBtn = _importBankBtn.(*gtk.FileChooserButton)
 	_recordBtn, _ := builder.GetObject("recordBtn")

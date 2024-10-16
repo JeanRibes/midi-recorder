@@ -146,7 +146,9 @@ func Run(ctx context.Context, cancel func(), inP, outP int, inL []string, inN []
 	stepReset.Connect("clicked", func() {
 		SinkLoop <- Message{Type: ResetStep}
 	})
-
+	stepPrev.Connect("clicked", func() {
+		SinkLoop <- Message{Type: StepBack}
+	})
 	targetsList := []gtk.TargetEntry{
 		targ(gtk.TargetEntryNew("text/plain", gtk.TARGET_OTHER_WIDGET, 0)),
 		//targ(gtk.TargetEntryNew("audio/midi", gtk.TARGET_OTHER_APP, 0)),
@@ -204,6 +206,9 @@ func Run(ctx context.Context, cancel func(), inP, outP int, inL []string, inN []
 
 		sc, _ := bankLabel.GetStyleContext()
 		sc.AddClass("zone")
+		if i == 0 {
+			sc.AddClass("first")
+		}
 
 		bankBox.Add(bankLabel)
 		bankBox.Add(playBankToggle)

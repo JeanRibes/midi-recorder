@@ -51,6 +51,13 @@ func Run(ctx context.Context, cancel func(), in drivers.In, out drivers.Out, sta
 	}
 	logger.Debug("input port", "open", in.IsOpen())
 
+	uiAlert := func(str string) {
+		SinkUI <- Message{Type: Error, String: str}
+	}
+	uiError := func(err error) {
+		uiAlert(err.Error())
+	}
+
 	var absmillisec int32 = 0
 
 	/*recordTrack.SendTo(TICKS, nil, func(m midi.Message, timestampms int32) {
@@ -104,9 +111,10 @@ func Run(ctx context.Context, cancel func(), in drivers.In, out drivers.Out, sta
 				}
 				cnt := 0
 				for _, ev := range lastOnStep {
-					send(ev.Message(on))
+					smsg := ev.MessageVel(on, vel)
+					send(smsg)
 					if isRecording {
-						state.MutiTrack.Add(delta, ev.Message(on))
+						state.MutiTrack.Add(delta, smsg)
 						delta = 0
 					}
 					cnt += 1
@@ -132,10 +140,17 @@ func Run(ctx context.Context, cancel func(), in drivers.In, out drivers.Out, sta
 
 			send(msg)
 		case msg.GetControlChange(&ch, &key, &vel):
+			if vel != 127 {
+				return
+			}
 			if isSteps {
+				if state.StepIndex == 0 {
+					isSteps = false
+					SinkUI <- Message{Type: StepMode, Boolean: isSteps}
+				}
 				state.ResetStep()
 			} else {
-				SinkUI <- Message{Type: StepMode, Boolean: false}
+				SinkUI <- Message{Type: StepMode, Boolean: true}
 			}
 		}
 	})
@@ -251,12 +266,13 @@ loopchan:
 				state.ResetStep()
 			case ResetStep:
 				state.ResetStep()
-				// load stuff
+			case StepBack:
+				state.StepBack()
 			case StateImport:
 				logger.Debug("loading state", "file", msg.String)
 				if err := state.LoadFromFile(msg.String); err != nil {
 					logger.Error(err)
-					SinkUI <- Message{Type: Error, String: err.Error()}
+					uiError(err)
 				}
 				state.Notify(SinkUI)
 			case StateExport:
@@ -267,7 +283,7 @@ loopchan:
 				logger.Info("saving to", "filename", fileName)
 				if err := state.SaveToFile(fileName); err != nil {
 					logger.Error(err)
-					SinkUI <- Message{Type: Error, String: err.Error()}
+					uiError(err)
 				}
 			case BankStateChange:
 				state.EnableBank(msg.Number, msg.Boolean)
@@ -320,15 +336,16 @@ loopchan:
 				f.Add(track)
 				if err := f.WriteFile(filepath); err != nil {
 					logger.Error(err)
-					SinkLoop <- Message{
-						Type:   Error,
-						String: err.Error(),
-					}
+					uiError(err)
 				}
 			case BankImport:
 				dst := msg.Number
 				filepath := msg.String
 				tr := smf.ReadTracks(filepath, 1)
+				if tr == nil {
+					uiAlert("impossible de lire le fichier " + filepath)
+					continue
+				}
 				tracks := tr.SMF().Tracks
 				if len(tracks) > 0 {
 					state.LoadTrack(dst, tracks[0])
@@ -350,7 +367,7 @@ loopchan:
 					state.Unlock()
 					continue
 				}
-				cut := bank[state.StepIndex:]
+				cut := bank[:state.StepIndex]
 				state.Unlock()
 				state.Append(0, cut)
 				SinkUI <- Message{
@@ -366,6 +383,9 @@ loopchan:
 						state.TempTrack = state.TempTrack[0 : l-2] // on supprimes les 2 derniers messages: noteOn & noteOff
 					}
 					logger.Info("suppression de la dernière note", "avant", l, "après", len(state.TempTrack))
+				} else {
+					state.DeleteNote()
+					state.Notify(SinkUI)
 				}
 			case ExportMultiTrack:
 				if !state.MutiTrack.IsClosed() {
