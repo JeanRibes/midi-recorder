@@ -24,8 +24,9 @@ func NewWithTreeView(treeView *gtk.TreeView) *Tableau {
 	cell1Renderer, _ := gtk.CellRendererTextNew()
 	column1, _ := gtk.TreeViewColumnNewWithAttribute("nom", cell1Renderer, "text", COLONNE_NOM)
 	treeView.AppendColumn(column1)
-	column1.SetExpand(true)
+	column1.SetExpand(false)
 	column1.SetResizable(true)
+	//column1.PackStart(cell1Renderer, true)
 
 	cell2Renderer, _ := gtk.CellRendererTextNew()
 	column2, _ := gtk.TreeViewColumnNewWithAttribute("date", cell2Renderer, "text", COLONNE_DATE)
@@ -38,7 +39,6 @@ func NewWithTreeView(treeView *gtk.TreeView) *Tableau {
 		log.Fatal("Unable to create list store:", err)
 	}
 	treeView.SetModel(listStore)
-
 	return &Tableau{
 		treeView:  treeView,
 		listStore: listStore,

@@ -346,7 +346,12 @@ loopchan:
 					uiAlert("impossible de lire le fichier " + filepath)
 					continue
 				}
-				tracks := tr.SMF().Tracks
+				file := tr.SMF()
+				if file == nil {
+					uiAlert("impossible de décoder le fichier " + filepath)
+					continue
+				}
+				tracks := file.Tracks
 				if len(tracks) > 0 {
 					state.LoadTrack(dst, tracks[0])
 				}

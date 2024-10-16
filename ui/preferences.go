@@ -144,3 +144,12 @@ func (_rfs *RecentFiles) LCP() string {
 	}
 	return prefix
 }
+
+func (p *Preferences) DeleteTrack(filepath string) {
+	p.RecentTracks = slices.DeleteFunc(p.RecentTracks, func(e RecentFile) bool {
+		if e.Path == filepath {
+			return true
+		}
+		return false
+	})
+}

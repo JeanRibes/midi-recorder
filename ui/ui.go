@@ -402,9 +402,9 @@ func Run(ctx context.Context, cancel func(), inP, outP int, inL []string, inN []
 
 	trackTreeView.DragSourceSet(gdk.BUTTON1_MASK|gdk.BUTTON2_MASK, targetsList, ACTION)
 	trackTreeView.Connect("drag-data-get", func(self *gtk.TreeView, ctx *gdk.DragContext, data *gtk.SelectionData, info, time int) {
-		_model, _ := trackTreeView.GetModel()
+		_model, _ := self.GetModel()
 		model := _model.ToTreeModel()
-		path, _ := trackTreeView.GetCursor()
+		path, _ := self.GetCursor()
 		iter, err := model.GetIter(path)
 		if err != nil {
 			log.Warn(err)
@@ -421,6 +421,29 @@ func Run(ctx context.Context, cancel func(), inP, outP int, inL []string, inN []
 		logger.Debug("track treeview DnD", "filepath", filepath)
 		binData := []byte{byte(ImportZone)}
 		data.SetData(gdk.SELECTION_PRIMARY, append(binData, []byte(filepath)...))
+	})
+
+	trackTreeView.Connect("key-press-event", func(self *gtk.TreeView, event *gdk.Event) {
+		evk := gdk.EventKeyNewFromEvent(event)
+		if evk.ScanCode() == 119 {
+			_model, _ := self.GetModel()
+			model := _model.ToTreeModel()
+			path, _ := self.GetCursor()
+			iter, err := model.GetIter(path)
+			if err != nil {
+				log.Warn(err)
+			}
+			val, err := model.GetValue(iter, COLONNE_PATH)
+			if err != nil {
+				log.Warn(err)
+			}
+			filepath, err := val.GetString()
+			if err != nil {
+				log.Warn(err)
+			}
+			prefs.DeleteTrack(filepath)
+			recentTracksTableau.FromSessions(prefs.Tracks())
+		}
 	})
 
 	/*sessionsTreeView.Connect("row-activated", func(self *gtk.TreeView,path *gtk.TreePath,col *gtk.TreeViewColumn,
