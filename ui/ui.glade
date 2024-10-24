@@ -72,6 +72,12 @@
     <property name="can-focus">False</property>
     <property name="icon-name">media-playback-stop</property>
   </object>
+  <object class="GtkAdjustment" id="transposeNumber">
+    <property name="lower">-12</property>
+    <property name="upper">12</property>
+    <property name="step-increment">1</property>
+    <property name="page-increment">10</property>
+  </object>
   <object class="GtkImage" id="undoImg">
     <property name="visible">True</property>
     <property name="can-focus">False</property>
@@ -103,9 +109,6 @@
                     <property name="can-focus">False</property>
                     <property name="orientation">vertical</property>
                     <child>
-                      <placeholder/>
-                    </child>
-                    <child>
                       <object class="GtkComboBox" id="comboInPorts">
                         <property name="visible">True</property>
                         <property name="can-focus">False</property>
@@ -113,7 +116,7 @@
                       <packing>
                         <property name="expand">False</property>
                         <property name="fill">True</property>
-                        <property name="position">1</property>
+                        <property name="position">0</property>
                       </packing>
                     </child>
                     <child>
@@ -124,7 +127,7 @@
                       <packing>
                         <property name="expand">False</property>
                         <property name="fill">True</property>
-                        <property name="position">2</property>
+                        <property name="position">1</property>
                       </packing>
                     </child>
                     <child>
@@ -177,7 +180,7 @@
                       <packing>
                         <property name="expand">False</property>
                         <property name="fill">True</property>
-                        <property name="position">3</property>
+                        <property name="position">2</property>
                       </packing>
                     </child>
                     <child>
@@ -233,7 +236,7 @@
                       <packing>
                         <property name="expand">False</property>
                         <property name="fill">True</property>
-                        <property name="position">4</property>
+                        <property name="position">3</property>
                       </packing>
                     </child>
                     <child>
@@ -247,8 +250,8 @@
                             <property name="can-focus">True</property>
                             <property name="receives-default">True</property>
                             <property name="image">playImg</property>
-                            <accelerator key="p" signal="clicked"/>
                             <accelerator key="l" signal="clicked"/>
+                            <accelerator key="p" signal="clicked"/>
                           </object>
                           <packing>
                             <property name="expand">False</property>
@@ -306,7 +309,7 @@
                       <packing>
                         <property name="expand">False</property>
                         <property name="fill">True</property>
-                        <property name="position">5</property>
+                        <property name="position">4</property>
                       </packing>
                     </child>
                     <child>
@@ -332,8 +335,8 @@
                             <property name="can-focus">True</property>
                             <property name="receives-default">True</property>
                             <property name="image-position">right</property>
-                            <accelerator key="e" signal="clicked"/>
                             <accelerator key="r" signal="clicked"/>
+                            <accelerator key="e" signal="clicked"/>
                           </object>
                           <packing>
                             <property name="expand">False</property>
@@ -348,8 +351,8 @@
                             <property name="can-focus">True</property>
                             <property name="receives-default">True</property>
                             <property name="image">undoImg</property>
-                            <accelerator key="BackSpace" signal="clicked"/>
                             <accelerator key="z" signal="clicked" modifiers="GDK_CONTROL_MASK"/>
+                            <accelerator key="BackSpace" signal="clicked"/>
                           </object>
                           <packing>
                             <property name="expand">False</property>
@@ -364,7 +367,7 @@
                       <packing>
                         <property name="expand">False</property>
                         <property name="fill">True</property>
-                        <property name="position">6</property>
+                        <property name="position">5</property>
                       </packing>
                     </child>
                     <child>
@@ -508,6 +511,95 @@
                         </child>
                         <child>
                           <placeholder/>
+                        </child>
+                      </object>
+                      <packing>
+                        <property name="expand">False</property>
+                        <property name="fill">True</property>
+                        <property name="position">6</property>
+                      </packing>
+                    </child>
+                    <child>
+                      <object class="GtkBox">
+                        <property name="visible">True</property>
+                        <property name="can-focus">False</property>
+                        <child>
+                          <object class="GtkEventBox" id="transposeZone">
+                            <property name="visible">True</property>
+                            <property name="can-focus">False</property>
+                            <child>
+                              <object class="GtkBox">
+                                <property name="visible">True</property>
+                                <property name="can-focus">False</property>
+                                <property name="margin-start">5</property>
+                                <property name="margin-end">5</property>
+                                <property name="margin-top">5</property>
+                                <property name="margin-bottom">5</property>
+                                <child>
+                                  <object class="GtkImage">
+                                    <property name="visible">True</property>
+                                    <property name="can-focus">False</property>
+                                    <property name="icon-name">network-transmit-receive</property>
+                                    <property name="icon_size">5</property>
+                                  </object>
+                                  <packing>
+                                    <property name="expand">False</property>
+                                    <property name="fill">True</property>
+                                    <property name="position">0</property>
+                                  </packing>
+                                </child>
+                                <child>
+                                  <object class="GtkLabel">
+                                    <property name="visible">True</property>
+                                    <property name="can-focus">False</property>
+                                    <property name="label" translatable="yes">Transposer</property>
+                                  </object>
+                                  <packing>
+                                    <property name="expand">False</property>
+                                    <property name="fill">True</property>
+                                    <property name="position">1</property>
+                                  </packing>
+                                </child>
+                              </object>
+                            </child>
+                            <style>
+                              <class name="zone"/>
+                            </style>
+                          </object>
+                          <packing>
+                            <property name="expand">False</property>
+                            <property name="fill">True</property>
+                            <property name="position">0</property>
+                          </packing>
+                        </child>
+                        <child>
+                          <object class="GtkSpinButton" id="transposeShift">
+                            <property name="visible">True</property>
+                            <property name="can-focus">True</property>
+                            <property name="max-width-chars">2</property>
+                            <property name="text" translatable="yes">0</property>
+                            <property name="input-purpose">digits</property>
+                            <property name="adjustment">transposeNumber</property>
+                            <property name="climb-rate">0.10</property>
+                            <property name="update-policy">if-valid</property>
+                          </object>
+                          <packing>
+                            <property name="expand">False</property>
+                            <property name="fill">True</property>
+                            <property name="position">1</property>
+                          </packing>
+                        </child>
+                        <child>
+                          <object class="GtkLabel">
+                            <property name="visible">True</property>
+                            <property name="can-focus">False</property>
+                            <property name="label" translatable="yes">demi-tons</property>
+                          </object>
+                          <packing>
+                            <property name="expand">False</property>
+                            <property name="fill">True</property>
+                            <property name="position">2</property>
+                          </packing>
                         </child>
                       </object>
                       <packing>

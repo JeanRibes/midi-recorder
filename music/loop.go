@@ -413,6 +413,8 @@ loopchan:
 			case ClearState:
 				state.ClearState()
 				state.Notify(SinkUI)
+			case Transpose:
+				state.Transpose(msg.Number, msg.Number2)
 			default:
 				logger.Printf("unknown message type: %#v", msg.Type)
 			}

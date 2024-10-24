@@ -16,6 +16,7 @@ var saveImg *gtk.Image
 var startrecordImg *gtk.Image
 var stepsImg *gtk.Image
 var stoprecordImg *gtk.Image
+var transposeNumber *gtk.Adjustment
 var undoImg *gtk.Image
 var mainWin *gtk.Window
 var mainHBox *gtk.Box
@@ -45,6 +46,8 @@ var stepRecRadio *gtk.RadioButton
 var playMT *gtk.Button
 var exportMultiTrackBtn *gtk.Button
 var mtZone *gtk.Label
+var transposeZone *gtk.EventBox
+var transposeShift *gtk.SpinButton
 var dragNdropZones *gtk.Box
 var importZone *gtk.EventBox
 var exportZone *gtk.EventBox
@@ -88,6 +91,8 @@ func loadUI(builder *gtk.Builder) {
 	stepsImg = _stepsImg.(*gtk.Image)
 	_stoprecordImg, _ := builder.GetObject("stoprecordImg")
 	stoprecordImg = _stoprecordImg.(*gtk.Image)
+	_transposeNumber, _ := builder.GetObject("transposeNumber")
+	transposeNumber = _transposeNumber.(*gtk.Adjustment)
 	_undoImg, _ := builder.GetObject("undoImg")
 	undoImg = _undoImg.(*gtk.Image)
 	_mainWin, _ := builder.GetObject("mainWin")
@@ -146,6 +151,10 @@ func loadUI(builder *gtk.Builder) {
 	exportMultiTrackBtn = _exportMultiTrackBtn.(*gtk.Button)
 	_mtZone, _ := builder.GetObject("mtZone")
 	mtZone = _mtZone.(*gtk.Label)
+	_transposeZone, _ := builder.GetObject("transposeZone")
+	transposeZone = _transposeZone.(*gtk.EventBox)
+	_transposeShift, _ := builder.GetObject("transposeShift")
+	transposeShift = _transposeShift.(*gtk.SpinButton)
 	_dragNdropZones, _ := builder.GetObject("dragNdropZones")
 	dragNdropZones = _dragNdropZones.(*gtk.Box)
 	_importZone, _ := builder.GetObject("importZone")

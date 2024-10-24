@@ -222,3 +222,19 @@ func (s *LoopState) DeleteNote() {
 	}
 	s.Unlock()
 }
+
+func (s *LoopState) Transpose(bank, shift int) {
+	s.Lock()
+	for i, ev := range s.Banks[bank] {
+		note := int(ev.note) + shift
+		if note < 0 {
+			note = 1
+		}
+		if note > 127 {
+			note = 127
+		}
+		ev.note = midi.Note(note)
+		s.Banks[bank][i] = ev
+	}
+	s.Unlock()
+}

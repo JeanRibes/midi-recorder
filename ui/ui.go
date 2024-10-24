@@ -475,6 +475,19 @@ func Run(ctx context.Context, cancel func(), inP, outP int, inL []string, inN []
 		recentTracksTableau.FromSessions(prefs.Tracks())
 	})
 
+	transposeZone.DragDestSet(gtk.DEST_DEFAULT_ALL, targetsList, ACTION)
+	transposeZone.Connect("drag-data-received", func(self *gtk.EventBox, ctx *gdk.DragContext, x, y int, data *gtk.SelectionData, m int, t uint) {
+		dragType := DragDropSrc(data.GetData()[0])
+		if dragType != Bank {
+			logger.Info("bad drag destination: transpose")
+			return
+		}
+		src := int(data.GetData()[1])
+		logger.Info("transposing", "bank", src)
+		shift := int(transposeShift.GetValue())
+		SinkLoop <- Message{Type: Transpose, Number: src, Number2: shift}
+	})
+
 	prov, _ := gtk.CssProviderNew()
 
 	if err := prov.LoadFromData(stylesheet); err != nil {

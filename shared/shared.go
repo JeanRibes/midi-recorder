@@ -26,6 +26,7 @@ const (
 	NoteUndo
 	ExportMultiTrack
 	ClearState
+	Transpose
 )
 
 type Message struct {
