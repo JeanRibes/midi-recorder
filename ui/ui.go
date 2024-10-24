@@ -202,37 +202,34 @@ func Run(ctx context.Context, cancel func(), inP, outP int, inL []string, inN []
 		}
 
 		bankBox, _ := gtk.BoxNew(gtk.ORIENTATION_VERTICAL, 5)
-		bankBox.SetMarginStart(5)
 
-		sc, _ := bankLabel.GetStyleContext()
+		sc, _ := bankEventBox.GetStyleContext()
 		sc.AddClass("zone")
 		if i == 0 {
 			sc.AddClass("first")
 		}
 
-		bankBox.Add(bankLabel)
+		bankEventBox.Add(bankLabel)
+		bankBox.Add(bankEventBox)
 		bankBox.Add(playBankToggle)
+		banksBox.Add(bankBox)
 
-		bankEventBox.Add(bankBox)
-
-		banksBox.Add(bankEventBox)
-		/*bankBtn.SetMarginBottom(10)
-		bankBtn.SetMarginStart(10)
-		bankBtn.SetMarginEnd(10)
-		bankBtn.SetMarginTop(10)*/
+		bbsc, _ := bankBox.GetStyleContext()
+		bbsc.AddClass("bank")
 
 		bankEventBox.DragSourceSet(gdk.BUTTON1_MASK|gdk.BUTTON2_MASK, targetsList, ACTION)
 		bankEventBox.DragDestSet(gtk.DEST_DEFAULT_ALL, targetsList, ACTION)
-		/*bankBtn.Connect("drag-begin", func(self *gtk.EventBox, context *gdk.DragContext) {
-			println("drag-begin")
-			//self.GetChild()
+		bankEventBox.Connect("drag-begin", func(self *gtk.EventBox, context *gdk.DragContext) {
+			sc.AddClass("dragged")
 		})
-		bankBtn.Connect("drag-end", func(self *gtk.EventBox, context *gdk.DragContext) {
-			println("drag-end")
+
+		bankEventBox.Connect("drag-end", func(self *gtk.EventBox, context *gdk.DragContext) {
+			sc.RemoveClass("dragged")
 		})
-		bankBtn.Connect("drag-drop", func(self *gtk.EventBox, context *gdk.DragContext, x, y int, time int) {
-			fmt.Printf("drag-drop x=%d,y=%d %s %#v\n", x, y, _btn.GetLabel(), context)
-		})*/
+		/*
+			bankBtn.Connect("drag-drop", func(self *gtk.EventBox, context *gdk.DragContext, x, y int, time int) {
+				fmt.Printf("drag-drop x=%d,y=%d %s %#v\n", x, y, _btn.GetLabel(), context)
+			})*/
 		bankEventBox.Connect("drag-data-get", func(self *gtk.EventBox, ctx *gdk.DragContext, data *gtk.SelectionData, info, time int) {
 			data.SetData(gdk.SELECTION_PRIMARY, []byte{
 				byte(Bank),
@@ -479,12 +476,21 @@ func Run(ctx context.Context, cancel func(), inP, outP int, inL []string, inN []
 	})
 
 	prov, _ := gtk.CssProviderNew()
+
 	if err := prov.LoadFromData(stylesheet); err != nil {
 		logger.Warn(err)
 	}
 	screen, _ := gdk.ScreenGetDefault()
 	gtk.AddProviderForScreen(screen, prov, 1)
 	mainWin.ShowAll()
+
+	reloadCss.Connect("clicked", func() {
+		logger.Debug("style reload")
+		if err := prov.LoadFromPath("ui/ui.css"); err != nil {
+			logger.Warn(err)
+		}
+		gtk.AddProviderForScreen(screen, prov, 1)
+	})
 
 	go loop(ctx, SinkUI, *logger, banksLabels)
 	gtk.Main()

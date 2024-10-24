@@ -19,8 +19,8 @@ var stoprecordImg *gtk.Image
 var undoImg *gtk.Image
 var mainWin *gtk.Window
 var mainHBox *gtk.Box
-var reconnectMidi *gtk.Button
-var reloadBtn *gtk.Button
+var mainControls *gtk.Box
+var mainButtons *gtk.Box
 var comboInPorts *gtk.ComboBox
 var comboOutPorts *gtk.ComboBox
 var bpmEntry *gtk.Entry
@@ -37,7 +37,14 @@ var stepPrev *gtk.Button
 var importBankBtn *gtk.FileChooserButton
 var recordBtn *gtk.Button
 var undoNote *gtk.Button
+var aa *gtk.Box
+var pianoRadio *gtk.RadioButton
+var recBufferRadio *gtk.RadioButton
+var stepPlayRadio *gtk.RadioButton
+var stepRecRadio *gtk.RadioButton
+var playMT *gtk.Button
 var exportMultiTrackBtn *gtk.Button
+var mtZone *gtk.Label
 var dragNdropZones *gtk.Box
 var importZone *gtk.EventBox
 var exportZone *gtk.EventBox
@@ -48,6 +55,9 @@ var tracksTab *gtk.Label
 var sessionsTreeView *gtk.TreeView
 var sessionsTab *gtk.Label
 var banksBox *gtk.Box
+var reconnectMidi *gtk.Button
+var reloadBtn *gtk.Button
+var reloadCss *gtk.Button
 
 func loadUI(builder *gtk.Builder) {
 	_eraseSessionImg, _ := builder.GetObject("eraseSessionImg")
@@ -84,10 +94,10 @@ func loadUI(builder *gtk.Builder) {
 	mainWin = _mainWin.(*gtk.Window)
 	_mainHBox, _ := builder.GetObject("mainHBox")
 	mainHBox = _mainHBox.(*gtk.Box)
-	_reconnectMidi, _ := builder.GetObject("reconnectMidi")
-	reconnectMidi = _reconnectMidi.(*gtk.Button)
-	_reloadBtn, _ := builder.GetObject("reloadBtn")
-	reloadBtn = _reloadBtn.(*gtk.Button)
+	_mainControls, _ := builder.GetObject("mainControls")
+	mainControls = _mainControls.(*gtk.Box)
+	_mainButtons, _ := builder.GetObject("mainButtons")
+	mainButtons = _mainButtons.(*gtk.Box)
 	_comboInPorts, _ := builder.GetObject("comboInPorts")
 	comboInPorts = _comboInPorts.(*gtk.ComboBox)
 	_comboOutPorts, _ := builder.GetObject("comboOutPorts")
@@ -120,8 +130,22 @@ func loadUI(builder *gtk.Builder) {
 	recordBtn = _recordBtn.(*gtk.Button)
 	_undoNote, _ := builder.GetObject("undoNote")
 	undoNote = _undoNote.(*gtk.Button)
+	_aa, _ := builder.GetObject("aa")
+	aa = _aa.(*gtk.Box)
+	_pianoRadio, _ := builder.GetObject("pianoRadio")
+	pianoRadio = _pianoRadio.(*gtk.RadioButton)
+	_recBufferRadio, _ := builder.GetObject("recBufferRadio")
+	recBufferRadio = _recBufferRadio.(*gtk.RadioButton)
+	_stepPlayRadio, _ := builder.GetObject("stepPlayRadio")
+	stepPlayRadio = _stepPlayRadio.(*gtk.RadioButton)
+	_stepRecRadio, _ := builder.GetObject("stepRecRadio")
+	stepRecRadio = _stepRecRadio.(*gtk.RadioButton)
+	_playMT, _ := builder.GetObject("playMT")
+	playMT = _playMT.(*gtk.Button)
 	_exportMultiTrackBtn, _ := builder.GetObject("exportMultiTrackBtn")
 	exportMultiTrackBtn = _exportMultiTrackBtn.(*gtk.Button)
+	_mtZone, _ := builder.GetObject("mtZone")
+	mtZone = _mtZone.(*gtk.Label)
 	_dragNdropZones, _ := builder.GetObject("dragNdropZones")
 	dragNdropZones = _dragNdropZones.(*gtk.Box)
 	_importZone, _ := builder.GetObject("importZone")
@@ -142,4 +166,10 @@ func loadUI(builder *gtk.Builder) {
 	sessionsTab = _sessionsTab.(*gtk.Label)
 	_banksBox, _ := builder.GetObject("banksBox")
 	banksBox = _banksBox.(*gtk.Box)
+	_reconnectMidi, _ := builder.GetObject("reconnectMidi")
+	reconnectMidi = _reconnectMidi.(*gtk.Button)
+	_reloadBtn, _ := builder.GetObject("reloadBtn")
+	reloadBtn = _reloadBtn.(*gtk.Button)
+	_reloadCss, _ := builder.GetObject("reloadCss")
+	reloadCss = _reloadCss.(*gtk.Button)
 }

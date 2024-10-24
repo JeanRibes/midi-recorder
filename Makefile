@@ -8,3 +8,7 @@ piano-assistant:
 
 run: piano-assistant
 	./start.sh
+clean:
+	rm piano-assistant
+dev: ui/handles.go
+	GTK_DEBUG=interactive go run ./cmd/piano-assistant
