@@ -1,4 +1,5 @@
 #!/bin/bash
+cd $(dirname "$0")
 pgrep qsynth || qsynth &
 while [[ $(aconnect -l|grep qsynth|wc -l) -lt 2 ]]; do
     sleep 1
