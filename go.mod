@@ -1,4 +1,4 @@
-module github.com/JeanRibes/midi
+module github.com/JeanRibes/midi-recorder
 
 go 1.22.2
 
@@ -11,6 +11,7 @@ require (
 	gitlab.com/gomidi/quantizer v0.0.5
 	golang.org/x/sync v0.8.0
 )
+
 // https://pkg.go.dev/github.com/go-audio/music/theory#section-readme
 
 require (

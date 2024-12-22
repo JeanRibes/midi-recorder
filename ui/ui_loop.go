@@ -4,7 +4,7 @@ import (
 	"context"
 	"fmt"
 
-	. "github.com/JeanRibes/midi/shared"
+	. "github.com/JeanRibes/midi-recorder/shared"
 	"github.com/charmbracelet/log"
 	"github.com/gotk3/gotk3/glib"
 	"github.com/gotk3/gotk3/gtk"

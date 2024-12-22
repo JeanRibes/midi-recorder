@@ -7,9 +7,9 @@ import (
 	"os/signal"
 	"time"
 
-	music "github.com/JeanRibes/midi/music"
-	. "github.com/JeanRibes/midi/shared"
-	ui "github.com/JeanRibes/midi/ui"
+	music "github.com/JeanRibes/midi-recorder/music"
+	. "github.com/JeanRibes/midi-recorder/shared"
+	ui "github.com/JeanRibes/midi-recorder/ui"
 
 	charmlog "github.com/charmbracelet/log"
 	"gitlab.com/gomidi/midi/v2"

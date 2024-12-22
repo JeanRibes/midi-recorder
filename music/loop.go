@@ -7,7 +7,7 @@ import (
 	"strings"
 	"time"
 
-	. "github.com/JeanRibes/midi/shared"
+	. "github.com/JeanRibes/midi-recorder/shared"
 
 	"github.com/charmbracelet/log"
 	charmlog "github.com/charmbracelet/log"

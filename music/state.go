@@ -5,7 +5,7 @@ import (
 	"errors"
 	"sync"
 
-	. "github.com/JeanRibes/midi/shared"
+	. "github.com/JeanRibes/midi-recorder/shared"
 
 	"gitlab.com/gomidi/midi/v2"
 	"gitlab.com/gomidi/midi/v2/smf"
